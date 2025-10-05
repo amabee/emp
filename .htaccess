@@ -1,0 +1,4 @@
+RewriteEngine On
+
+RewriteRule ^(admin|supervisor|hr|employee)/([^/]+)/?$ index.php?role=$1&page=$2 [QSA,L]
+
