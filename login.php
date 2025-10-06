@@ -28,6 +28,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $userType = $_SESSION['user_type'];
         if ($userType === 'admin') {
           redirect('admin/dashboard.php', 'Login successful!', 'success');
+        } else if ($userType === 'supervisor') {
+          redirect('supervisor/dashboard.php', 'Login successful!', 'success');
+        } else if ($userType === 'hr') {
+          redirect('hr/dashboard.php', 'Login successful!', 'success');
         } else {
           redirect('employee/dashboard.php', 'Login successful!', 'success');
         }

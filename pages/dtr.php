@@ -821,7 +821,7 @@ ob_start();
         <td>
           <div class="d-flex flex-column">
             <span class="fw-bold text-primary">${record.work_hours || '0h 0m'}</span>
-            <small class="text-muted">Regular: ${record.regular_hours || '0h'}</small>
+            <small class="text-muted">-</small>
           </div>
         </td>
         <td>
@@ -852,7 +852,7 @@ ob_start();
         case 'complete': return 'success';
         case 'incomplete': return 'warning';
         case 'absent': return 'danger';
-        default: return 'secondary';
+        default: return 'info';
       }
     }
 
@@ -999,7 +999,6 @@ ob_start();
       updateElement('dtrDetailShift', data.schedule_info.shift_name);
       updateElement('dtrDetailRegular', data.time_summary.regular_hours + 'h');
       updateElement('dtrDetailOvertime', data.time_summary.overtime_hours + 'h');
-      updateElement('dtrDetailBreak', data.time_summary.break_time);
       updateElement('dtrDetailTotal', data.time_summary.total_work_time);
       
       // Update timeline

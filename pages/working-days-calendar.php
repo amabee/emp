@@ -1144,7 +1144,6 @@ ob_start();
       } else if (this.workingDays.has(dateString)) {
         // Check if it's a half-day
         const dayDetails = this.dayDetails.get(dateString);
-        console.log("DAY DETAILS: ", dayDetails)
         if (dayDetails && dayDetails.workingType === 'half') {
           return 'Half-Day';
         }

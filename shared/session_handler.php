@@ -29,7 +29,7 @@ if (!function_exists('checkAuth')) {
 if (!function_exists('requireUserAuth')) {
     function requireUserAuth() {
         if (!checkAuth()) {
-            header('Location: ../login.php');
+            header('Location: ../../login.php');
             exit();
         }
     }

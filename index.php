@@ -26,7 +26,7 @@ $allowed_roles = $page_permissions[$requested_page];
 // Check if user is logged in and has proper role
 if (!isset($_SESSION['user_type']) || !in_array($_SESSION['user_type'], $allowed_roles)) {
   http_response_code(403);
-  header('Location: login.php');
+  header('Location: ../login.php');
   exit();
 }
 

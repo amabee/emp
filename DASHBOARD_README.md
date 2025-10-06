@@ -84,3 +84,45 @@ You can easily customize:
 - Chart data and styling
 
 The dashboard is now fully functional and integrates seamlessly with your existing employee management system!
+
+---
+
+## Overtime System Documentation
+
+### Updated Overtime System:
+
+#### 1. Hourly Rate Calculation:
+The hourly rate is calculated based on the employee's basic salary using the following formula:
+```
+Hourly Rate = Basic Salary ÷ 2 (semi-monthly) ÷ 13 (working days) ÷ 8 (hours)
+```
+
+**Example:** ₱14,000 monthly salary ÷ 2 ÷ 13 ÷ 8 = ₱67.31/hour
+
+#### 2. Overtime Detection:
+- **Regular overtime**: Working beyond scheduled shift end time (1.5x rate)
+- **Weekend overtime**: Working on Saturday or Sunday (entire work time counts as overtime)
+- **Extended overtime**: More than 2 hours overtime on weekdays
+
+#### 3. Weekend Work as Overtime:
+If an employee works on Saturday or Sunday (day-off), the **entire work duration** is considered overtime, not just time beyond a schedule.
+
+### Example Scenarios:
+
+#### Scenario 1: Regular Overtime
+- Basic salary: ₱14,000
+- Hourly rate: ₱67.31
+- Overtime rate: ₱100.97 (1.5x)
+- Worked 2 hours past schedule
+- **Overtime pay: 2 × ₱100.97 = ₱201.94**
+
+#### Scenario 2: Weekend Work
+- Same employee works 8 hours on Saturday
+- All 8 hours count as overtime
+- **Overtime pay: 8 × ₱100.97 = ₱807.76**
+
+### Technical Implementation:
+- Overtime records are automatically created when employees time out beyond their scheduled hours
+- Weekend work is detected and processed as full overtime
+- All overtime calculations are stored in the `overtime_records` table
+- Pay period is based on 13 working days (excluding weekends) per semi-monthly period

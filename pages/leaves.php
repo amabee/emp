@@ -325,99 +325,209 @@ ob_start();
     }
   })();
 
-  const dummyLeaveData = [
-    { 
-      id: 1, 
-      employee: 'Maria Santos', 
-      department: 'Engineering',
-      leave_type: 'vacation', 
-      start_date: '2025-10-15', 
-      end_date: '2025-10-18', 
-      days: 4, 
-      status: 'pending', 
-      applied_on: '2025-10-05', 
-      reason: 'Family vacation to celebrate anniversary' 
-    },
-    { 
-      id: 2, 
-      employee: 'John Doe', 
-      department: 'HR',
-      leave_type: 'sick', 
-      start_date: '2025-10-08', 
-      end_date: '2025-10-08', 
-      days: 1, 
-      status: 'approved', 
-      applied_on: '2025-10-07', 
-      reason: 'Fever and flu symptoms' 
-    },
-    { 
-      id: 3, 
-      employee: 'Leila Karim', 
-      department: 'Sales',
-      leave_type: 'personal', 
-      start_date: '2025-10-20', 
-      end_date: '2025-10-22', 
-      days: 3, 
-      status: 'approved', 
-      applied_on: '2025-10-03', 
-      reason: 'Personal matters - family wedding' 
-    },
-    { 
-      id: 4, 
-      employee: 'Pedro Alvarez', 
-      department: 'Engineering',
-      leave_type: 'vacation', 
-      start_date: '2025-10-25', 
-      end_date: '2025-10-30', 
-      days: 6, 
-      status: 'rejected', 
-      applied_on: '2025-10-04', 
-      reason: 'Extended weekend trip' 
-    },
-    { 
-      id: 5, 
-      employee: 'Sarah Johnson', 
-      department: 'Marketing',
-      leave_type: 'emergency', 
-      start_date: '2025-10-06', 
-      end_date: '2025-10-06', 
-      days: 1, 
-      status: 'approved', 
-      applied_on: '2025-10-06', 
-      reason: 'Family emergency' 
-    }
-  ];
+  // Global variables
+  let allLeaveData = [];
+  let allEmployees = [];
+  let allDepartments = [];
 
   function initLeaveManagement() {
     $(document).ready(function () {
-      renderLeaveRequests(dummyLeaveData);
-
+      // Load initial data
+      loadLeaveData();
+      loadLeaveStatistics();
+      loadEmployeesForDropdown();
+      
       // Search and filter functionality
       $('#searchLeave').on('keyup', function () { filterAndRenderLeave(); });
       $('#filterLeaveType, #filterStatus, #filterDepartment').on('change', function () { filterAndRenderLeave(); });
-      $('#refreshLeaveBtn').on('click', function () { renderLeaveRequests(dummyLeaveData); });
+      $('#refreshLeaveBtn').on('click', function () { loadLeaveData(); });
+      
+      // Modal buttons
+      $('#leaveBalanceBtn').on('click', function() { loadLeaveBalances(); });
 
       // Form submission
       $('#addLeaveForm').on('submit', function (e) {
         e.preventDefault();
-        // Simulate form submission
-        const formData = $(this).serialize();
-        console.log('Leave request submitted:', formData);
-        
-        // Show success message
-        if (typeof Swal !== 'undefined') {
-          Swal.fire('Success!', 'Leave request submitted successfully', 'success');
-        } else {
-          alert('Leave request submitted successfully');
-        }
-        
-        $('#addLeaveModal').modal('hide');
-        this.reset();
+        submitLeaveRequest($(this));
       });
 
       // Calculate days when dates change
       $('input[name="start_date"], input[name="end_date"]').on('change', calculateLeaveDays);
     });
+  }
+
+  // AJAX Functions
+  function loadLeaveData() {
+    const filters = {
+      search: $('#searchLeave').val(),
+      leave_type: $('#filterLeaveType').val(),
+      status: $('#filterStatus').val(),
+      department_id: $('#filterDepartment').val()
+    };
+
+    $.ajax({
+      url: '../ajax/get_leaves.php',
+      method: 'GET',
+      data: filters,
+      dataType: 'json',
+      success: function(response) {
+        if (response.success) {
+          allLeaveData = response.data;
+          renderLeaveRequests(allLeaveData);
+        } else {
+          console.error('Error loading leave data:', response.message);
+          showAlert('Error loading leave data: ' + response.message, 'error');
+        }
+      },
+      error: function(xhr, status, error) {
+        console.error('AJAX error loading leave data:', error);
+        showAlert('Error loading leave data. Please try again.', 'error');
+      }
+    });
+  }
+
+  function loadLeaveStatistics() {
+    $.ajax({
+      url: '../ajax/get_leave_statistics.php',
+      method: 'GET',
+      dataType: 'json',
+      success: function(response) {
+        if (response.success) {
+          updateStatisticsCards(response.data);
+        } else {
+          console.error('Error loading leave statistics:', response.message);
+        }
+      },
+      error: function(xhr, status, error) {
+        console.error('AJAX error loading leave statistics:', error);
+      }
+    });
+  }
+
+  function loadEmployeesForDropdown() {
+    $.ajax({
+      url: '../ajax/get_employees.php',
+      method: 'GET',
+      dataType: 'json',
+      success: function(response) {
+        if (response.success) {
+          allEmployees = response.employees || [];
+          allDepartments = response.departments || [];
+          populateEmployeeDropdown();
+          populateDepartmentFilter();
+        }
+      },
+      error: function(xhr, status, error) {
+        console.error('AJAX error loading employees:', error);
+      }
+    });
+  }
+
+  function submitLeaveRequest(form) {
+    const formData = form.serialize();
+    
+    $.ajax({
+      url: '../ajax/add_leave.php',
+      method: 'POST',
+      data: formData,
+      dataType: 'json',
+      success: function(response) {
+        if (response.success) {
+          showAlert('Leave request submitted successfully!', 'success');
+          $('#addLeaveModal').modal('hide');
+          form[0].reset();
+          loadLeaveData(); // Refresh the list
+          loadLeaveStatistics(); // Refresh stats
+        } else {
+          showAlert('Error: ' + response.message, 'error');
+        }
+      },
+      error: function(xhr, status, error) {
+        console.error('AJAX error submitting leave request:', error);
+        showAlert('Error submitting leave request. Please try again.', 'error');
+      }
+    });
+  }
+
+  function loadLeaveBalances() {
+    $.ajax({
+      url: '../ajax/get_leave_balances.php',
+      method: 'GET',
+      dataType: 'json',
+      success: function(response) {
+        if (response.success) {
+          populateLeaveBalancesModal(response.data);
+        } else {
+          showAlert('Error loading leave balances: ' + response.message, 'error');
+        }
+      },
+      error: function(xhr, status, error) {
+        console.error('AJAX error loading leave balances:', error);
+        showAlert('Error loading leave balances. Please try again.', 'error');
+      }
+    });
+  }
+
+  // Helper Functions
+  function updateStatisticsCards(stats) {
+    if (stats.year) {
+      // Update the statistics cards with real data
+      $('.card-body h3:contains("12")').text(stats.year.pending || 0);
+      $('.card-body h3:contains("38")').text(stats.year.approved || 0);
+      $('.card-body h3:contains("7")').text(stats.year.rejected || 0);
+      $('.card-body h3:contains("25")').text(stats.month.total || 0);
+    }
+  }
+
+  function populateEmployeeDropdown() {
+    const employeeSelect = $('select[name="employee_id"]');
+    employeeSelect.empty().append('<option value="">Select Employee</option>');
+    
+    allEmployees.forEach(function(employee) {
+      employeeSelect.append(`<option value="${employee.employee_id}">${employee.first_name} ${employee.last_name}</option>`);
+    });
+  }
+
+  function populateDepartmentFilter() {
+    const deptFilter = $('#filterDepartment');
+    deptFilter.empty().append('<option value="">All Departments</option>');
+    
+    allDepartments.forEach(function(dept) {
+      deptFilter.append(`<option value="${dept.department_id}">${dept.department_name}</option>`);
+    });
+  }
+
+  function populateLeaveBalancesModal(balances) {
+    const tbody = $('#leaveBalanceBody');
+    tbody.empty();
+    
+    balances.forEach(function(balance) {
+      const row = `
+        <tr>
+          <td><strong>${balance.employee_name}</strong><br><small class="text-muted">${balance.department_name || 'N/A'}</small></td>
+          <td><span class="badge bg-success">${balance.vacation_remaining}/${balance.vacation_total}</span></td>
+          <td><span class="badge bg-info">${balance.sick_remaining}/${balance.sick_total}</span></td>
+          <td><span class="badge bg-warning">${balance.personal_remaining}/${balance.personal_total}</span></td>
+          <td><span class="badge bg-primary">${balance.vacation_used + balance.sick_used + balance.personal_used}/${balance.vacation_total + balance.sick_total + balance.personal_total}</span></td>
+        </tr>
+      `;
+      tbody.append(row);
+    });
+  }
+
+  function showAlert(message, type = 'info') {
+    if (typeof Swal !== 'undefined') {
+      const swalType = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+      Swal.fire({
+        title: type === 'error' ? 'Error' : type === 'success' ? 'Success' : 'Info',
+        text: message,
+        icon: swalType,
+        timer: 3000,
+        showConfirmButton: false
+      });
+    } else {
+      alert(message);
+    }
   }
 
   function renderLeaveRequests(items) {
@@ -438,23 +548,23 @@ ob_start();
           <td>
             <div class="d-flex align-items-center">
               <div class="avatar avatar-sm me-2">
-                <span class="avatar-initial rounded-circle bg-label-primary">${request.employee.charAt(0)}</span>
+                <span class="avatar-initial rounded-circle bg-label-primary">${request.employee_name.charAt(0)}</span>
               </div>
               <div>
-                <strong>${request.employee}</strong>
-                <br><small class="text-muted">${request.department}</small>
+                <strong>${request.employee_name}</strong>
+                <br><small class="text-muted">${request.department_name || 'N/A'}</small>
               </div>
             </div>
           </td>
           <td>${leaveTypeIcon} ${capitalizeFirst(request.leave_type)}</td>
           <td>${formatDate(request.start_date)}</td>
           <td>${formatDate(request.end_date)}</td>
-          <td><span class="badge bg-info">${request.days} day${request.days > 1 ? 's' : ''}</span></td>
+          <td><span class="badge bg-info">${request.total_days} day${request.total_days > 1 ? 's' : ''}</span></td>
           <td>${statusBadge}</td>
-          <td>${formatDate(request.applied_on)}</td>
+          <td>${formatDate(request.created_at)}</td>
           <td>
-            <span class="text-truncate d-inline-block" style="max-width: 200px;" title="${request.reason}">
-              ${request.reason}
+            <span class="text-truncate d-inline-block" style="max-width: 200px;" title="${request.reason || 'No reason provided'}">
+              ${request.reason || 'No reason provided'}
             </span>
           </td>
           <td class="text-center">
@@ -463,22 +573,19 @@ ob_start();
                 Actions
               </button>
               <div class="dropdown-menu">
-                <a class="dropdown-item" href="javascript:void(0);" onclick="viewLeaveDetails(${request.id})">
+                <a class="dropdown-item" href="javascript:void(0);" onclick="viewLeaveDetails(${request.leave_id})">
                   <i class="bx bx-show me-1"></i>View Details
                 </a>
-                ${request.status === 'pending' ? `
-                <a class="dropdown-item text-success" href="javascript:void(0);" onclick="approveLeave(${request.id})">
+                ${request.status === 'Pending' ? `
+                <a class="dropdown-item text-success" href="javascript:void(0);" onclick="approveLeave(${request.leave_id})">
                   <i class="bx bx-check me-1"></i>Approve
                 </a>
-                <a class="dropdown-item text-danger" href="javascript:void(0);" onclick="rejectLeave(${request.id})">
+                <a class="dropdown-item text-danger" href="javascript:void(0);" onclick="rejectLeave(${request.leave_id})">
                   <i class="bx bx-x me-1"></i>Reject
                 </a>
                 ` : ''}
                 <div class="dropdown-divider"></div>
-                <a class="dropdown-item" href="javascript:void(0);" onclick="editLeave(${request.id})">
-                  <i class="bx bx-edit me-1"></i>Edit
-                </a>
-                <a class="dropdown-item text-danger" href="javascript:void(0);" onclick="deleteLeave(${request.id})">
+                <a class="dropdown-item text-danger" href="javascript:void(0);" onclick="deleteLeave(${request.leave_id})">
                   <i class="bx bx-trash me-1"></i>Delete
                 </a>
               </div>
@@ -491,7 +598,7 @@ ob_start();
   }
 
   function getStatusBadge(status) {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case 'pending':
         return '<span class="badge status-pending">Pending</span>';
       case 'approved':
@@ -532,20 +639,8 @@ ob_start();
   }
 
   function filterAndRenderLeave() {
-    const searchQuery = $('#searchLeave').val().toLowerCase();
-    const typeFilter = $('#filterLeaveType').val();
-    const statusFilter = $('#filterStatus').val();
-    const deptFilter = $('#filterDepartment').val();
-
-    const filtered = dummyLeaveData.filter(request => {
-      if (typeFilter && request.leave_type !== typeFilter) return false;
-      if (statusFilter && request.status !== statusFilter) return false;
-      if (deptFilter && request.department !== deptFilter) return false;
-      if (searchQuery && !request.employee.toLowerCase().includes(searchQuery)) return false;
-      return true;
-    });
-
-    renderLeaveRequests(filtered);
+    // For real-time filtering, we'll reload data with filters
+    loadLeaveData();
   }
 
   function calculateLeaveDays() {
@@ -564,20 +659,24 @@ ob_start();
     }
   }
 
-  // Action functions (placeholder implementations)
+  // Action functions
   function viewLeaveDetails(id) {
-    const request = dummyLeaveData.find(r => r.id === id);
+    const request = allLeaveData.find(r => r.leave_id == id);
     if (request && typeof Swal !== 'undefined') {
       Swal.fire({
         title: 'Leave Request Details',
         html: `
           <div class="text-start">
-            <p><strong>Employee:</strong> ${request.employee}</p>
+            <p><strong>Employee:</strong> ${request.employee_name}</p>
+            <p><strong>Department:</strong> ${request.department_name || 'N/A'}</p>
+            <p><strong>Position:</strong> ${request.position_name || 'N/A'}</p>
             <p><strong>Leave Type:</strong> ${capitalizeFirst(request.leave_type)}</p>
-            <p><strong>Duration:</strong> ${formatDate(request.start_date)} to ${formatDate(request.end_date)} (${request.days} days)</p>
+            <p><strong>Duration:</strong> ${formatDate(request.start_date)} to ${formatDate(request.end_date)} (${request.total_days} days)</p>
             <p><strong>Status:</strong> ${capitalizeFirst(request.status)}</p>
-            <p><strong>Reason:</strong> ${request.reason}</p>
-            <p><strong>Applied On:</strong> ${formatDate(request.applied_on)}</p>
+            <p><strong>Reason:</strong> ${request.reason || 'No reason provided'}</p>
+            <p><strong>Applied On:</strong> ${formatDate(request.created_at)}</p>
+            ${request.approved_by_name ? `<p><strong>Approved/Rejected By:</strong> ${request.approved_by_name}</p>` : ''}
+            ${request.updated_at && request.updated_at !== request.created_at ? `<p><strong>Last Updated:</strong> ${formatDate(request.updated_at)}</p>` : ''}
           </div>
         `,
         width: 600
@@ -587,33 +686,76 @@ ob_start();
 
   function approveLeave(id) {
     if (typeof Swal !== 'undefined') {
-      Swal.fire('Approved!', 'Leave request has been approved', 'success');
+      Swal.fire({
+        title: 'Approve Leave Request',
+        input: 'textarea',
+        inputLabel: 'Comments (optional)',
+        inputPlaceholder: 'Add any comments about the approval...',
+        showCancelButton: true,
+        confirmButtonText: 'Approve',
+        confirmButtonColor: '#28a745',
+        preConfirm: (comments) => {
+          return updateLeaveStatus(id, 'Approved', comments);
+        }
+      });
     }
   }
 
   function rejectLeave(id) {
     if (typeof Swal !== 'undefined') {
-      Swal.fire('Rejected!', 'Leave request has been rejected', 'info');
+      Swal.fire({
+        title: 'Reject Leave Request',
+        input: 'textarea',
+        inputLabel: 'Reason for rejection',
+        inputPlaceholder: 'Please provide a reason for rejecting this leave request...',
+        inputValidator: (value) => {
+          if (!value) {
+            return 'You need to provide a reason for rejection!';
+          }
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Reject',
+        confirmButtonColor: '#dc3545',
+        preConfirm: (comments) => {
+          return updateLeaveStatus(id, 'Rejected', comments);
+        }
+      });
     }
   }
 
-  function editLeave(id) {
-    console.log('Edit leave request:', id);
+  function updateLeaveStatus(leaveId, status, comments) {
+    return $.ajax({
+      url: '../ajax/update_leave_status.php',
+      method: 'POST',
+      data: {
+        leave_id: leaveId,
+        status: status,
+        comments: comments || ''
+      },
+      dataType: 'json'
+    }).then(function(response) {
+      if (response.success) {
+        Swal.fire({
+          title: 'Success!',
+          text: response.message,
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false
+        });
+        loadLeaveData(); // Refresh the list
+        loadLeaveStatistics(); // Refresh stats
+      } else {
+        Swal.fire('Error!', response.message, 'error');
+      }
+    }).catch(function(xhr, status, error) {
+      console.error('AJAX error updating leave status:', error);
+      Swal.fire('Error!', 'Failed to update leave status. Please try again.', 'error');
+    });
   }
 
   function deleteLeave(id) {
     if (typeof Swal !== 'undefined') {
-      Swal.fire({
-        title: 'Delete Leave Request?',
-        text: 'This action cannot be undone',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, delete it'
-      }).then((result) => {
-        if (result.isConfirmed) {
-          Swal.fire('Deleted!', 'Leave request has been deleted', 'success');
-        }
-      });
+      Swal.fire('Info', 'Delete functionality will be implemented soon', 'info');
     }
   }
 </script>
