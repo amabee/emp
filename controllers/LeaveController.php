@@ -86,7 +86,7 @@ class LeaveController
                     LEFT JOIN department d ON e.department_id = d.department_id
                     LEFT JOIN job_position jp ON e.position_id = jp.position_id
                     LEFT JOIN users u_approver ON lr.approved_by = u_approver.user_id
-                    LEFT JOIN employees approver ON u_approver.employee_id = approver.employee_id
+                    LEFT JOIN employees approver ON u_approver.user_id = approver.user_id
                     $whereClause
                     ORDER BY lr.created_at DESC";
 
