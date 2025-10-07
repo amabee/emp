@@ -33,6 +33,9 @@ ob_start();
             <button class="btn btn-sm btn-outline-info ms-2" id="leaveBalanceBtn" data-bs-toggle="modal" data-bs-target="#leaveBalanceModal">
               <i class="bx bx-calendar-alt me-1"></i>Leave Balances
             </button>
+            <button class="btn btn-sm btn-outline-secondary ms-2" id="leaveRuleHelp" data-bs-toggle="tooltip" title="Counting is inclusive of start/end dates. Balances and request validation use company working-calendar (holidays/weekends) when available.">
+              <i class="bx bx-help-circle me-1"></i>Counting Rules
+            </button>
           </div>
         </div>
         <div class="col-sm-5 text-center text-sm-left">
@@ -192,16 +195,15 @@ ob_start();
       </div>
       <div class="modal-body">
         <form id="addLeaveForm">
+          <?php if (in_array(strtolower($user_type ?? ''), ['admin','hr'])): ?>
           <div class="mb-3">
             <label class="form-label">Employee *</label>
             <select class="form-select" name="employee_id" required>
               <option value="">Select Employee</option>
-              <option value="1">Maria Santos</option>
-              <option value="2">John Doe</option>
-              <option value="3">Leila Karim</option>
-              <option value="4">Pedro Alvarez</option>
+              <!-- Employee options will be populated dynamically for admins/HR -->
             </select>
           </div>
+          <?php endif; ?>
           <div class="mb-3">
             <label class="form-label">Leave Type *</label>
             <select class="form-select" name="leave_type" required>
@@ -233,6 +235,7 @@ ob_start();
               <input class="form-check-input" type="checkbox" name="half_day" id="halfDay">
               <label class="form-check-label" for="halfDay">
                 Half Day Leave
+                <small class="text-muted" data-bs-toggle="tooltip" title="Half day is only valid when start and end date are the same. For multi-day ranges, the system treats each calendar/working day per company schedule.">(info)</small>
               </label>
             </div>
           </div>
@@ -294,7 +297,9 @@ ob_start();
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-primary">Update Balances</button>
+        <?php if (strtolower($user_type ?? '') !== 'employee' ): ?>
+          <button type="button" class="btn btn-primary">Update Balances</button>
+        <?php endif; ?>
       </div>
     </div>
   </div>
@@ -340,6 +345,11 @@ ob_start();
 
   function initLeaveManagement() {
     $(document).ready(function () {
+      // Initialize Bootstrap tooltips if available
+      if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        tooltipTriggerList.forEach(function (el) { new bootstrap.Tooltip(el); });
+      }
       // Load initial data
       loadLeaveData();
       loadLeaveStatistics();
@@ -489,6 +499,7 @@ ob_start();
 
   function populateEmployeeDropdown() {
     const employeeSelect = $('select[name="employee_id"]');
+    if (employeeSelect.length === 0) return; // nothing to populate for non-admin/hr
     employeeSelect.empty().append('<option value="">Select Employee</option>');
     
     allEmployees.forEach(function(employee) {
@@ -603,7 +614,7 @@ ob_start();
           <td>${leaveTypeIcon} ${capitalizeFirst(request.leave_type)}</td>
           <td>${formatDate(request.start_date)}</td>
           <td>${formatDate(request.end_date)}</td>
-          <td><span class="badge bg-info">${request.total_days} day${request.total_days > 1 ? 's' : ''}</span></td>
+          <td><span class="badge bg-info">${(Number(request.total_days) % 1 === 0 ? Number(request.total_days) : request.total_days)} day${Number(request.total_days) > 1 ? 's' : ''}</span></td>
           <td>${statusBadge}</td>
           <td>${formatDate(request.created_at)}</td>
           <td>

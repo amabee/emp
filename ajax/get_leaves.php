@@ -76,6 +76,23 @@ try {
         $filters['date_to'] = $_GET['date_to'];
     }
     
+    // If current user is not admin/hr/supervisor, limit results to their own leaves
+    $privileged = ['admin', 'hr', 'supervisor'];
+    if (!in_array(strtolower($_SESSION['user_type'] ?? ''), $privileged)) {
+        // lookup employee_id for current user
+        $db = getDBConnection();
+        $stmt = $db->prepare("SELECT employee_id FROM employees WHERE user_id = :uid LIMIT 1");
+        $stmt->execute(['uid' => $_SESSION['user_id']]);
+        $emp = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($emp && !empty($emp['employee_id'])) {
+            $filters['employee_id'] = (int) $emp['employee_id'];
+        } else {
+            // no employee record found; return empty set
+            echo json_encode(['success' => true, 'data' => []]);
+            exit();
+        }
+    }
+    
     $result = $leaveController->getLeaveRequests($filters);
     echo json_encode($result);
     
