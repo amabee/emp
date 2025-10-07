@@ -70,7 +70,7 @@ class LeaveController
                         lr.start_date,
                         lr.end_date,
                         lr.status,
-                        lr.reason,
+                        COALESCE(lr.reason, lr.comments, '') as reason,
                         lr.created_at,
                         lr.updated_at,
                         lr.approved_by,
@@ -79,20 +79,46 @@ class LeaveController
                         e.last_name,
                         d.department_name,
                         jp.position_name,
-                        CONCAT(approver.first_name, ' ', approver.last_name) as approved_by_name,
-                        DATEDIFF(lr.end_date, lr.start_date) + 1 as total_days
+                        -- Resolve approver name from employees if possible, else users table
+                        COALESCE(CONCAT(approver.first_name, ' ', approver.last_name), CONCAT(u_approver.username), '') as approved_by_name,
+                        -- total_days should respect half_day flag
+                        CASE WHEN lr.half_day = 1 THEN 0.5 ELSE (DATEDIFF(lr.end_date, lr.start_date) + 1) END as total_days
                     FROM leave_records lr
                     LEFT JOIN employees e ON lr.employee_id = e.employee_id
                     LEFT JOIN department d ON e.department_id = d.department_id
                     LEFT JOIN job_position jp ON e.position_id = jp.position_id
                     LEFT JOIN users u_approver ON lr.approved_by = u_approver.user_id
-                    LEFT JOIN employees approver ON u_approver.user_id = approver.user_id
+                    LEFT JOIN employees approver ON lr.approved_by = approver.employee_id
                     $whereClause
                     ORDER BY lr.created_at DESC";
 
             $stmt = $this->db->prepare($sql);
             $stmt->execute($params);
             $leaves = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Resolve approved_by_name safely in PHP to avoid referencing missing columns in users table
+            foreach ($leaves as &$lv) {
+                $lv['approved_by_name'] = '';
+                if (!empty($lv['approved_by'])) {
+                    // First try to find an employee record with that user id
+                    $empStmt = $this->db->prepare("SELECT CONCAT(first_name, ' ', last_name) as name FROM employees WHERE user_id = :uid LIMIT 1");
+                    $empStmt->execute(['uid' => $lv['approved_by']]);
+                    $emp = $empStmt->fetch(PDO::FETCH_ASSOC);
+                    if ($emp && !empty($emp['name'])) {
+                        $lv['approved_by_name'] = $emp['name'];
+                        continue;
+                    }
+
+                    // As fallback, if approved_by references an employee_id directly (older data), try employees.employee_id
+                    $empStmt2 = $this->db->prepare("SELECT CONCAT(first_name, ' ', last_name) as name FROM employees WHERE employee_id = :eid LIMIT 1");
+                    $empStmt2->execute(['eid' => $lv['approved_by']]);
+                    $emp2 = $empStmt2->fetch(PDO::FETCH_ASSOC);
+                    if ($emp2 && !empty($emp2['name'])) {
+                        $lv['approved_by_name'] = $emp2['name'];
+                        continue;
+                    }
+                }
+            }
 
             return [
                 'success' => true,
@@ -130,12 +156,15 @@ class LeaveController
                 }
             }
 
-            // Validate dates
+            // Validate dates (compare date-only to allow same-day requests)
             $startDate = new DateTime($data['start_date']);
             $endDate = new DateTime($data['end_date']);
             $today = new DateTime();
 
-            if ($startDate < $today) {
+            $startYmd = $startDate->format('Y-m-d');
+            $todayYmd = $today->format('Y-m-d');
+
+            if ($startYmd < $todayYmd) {
                 throw new Exception('Start date cannot be in the past');
             }
 

@@ -56,7 +56,7 @@ ob_start();
               </div>
               <div>
                 <span class="fw-medium d-block mb-1">Pending Requests</span>
-                <h3 class="card-title mb-0">12</h3>
+                <h3 id="statPending" class="card-title mb-0">0</h3>
               </div>
             </div>
           </div>
@@ -71,7 +71,7 @@ ob_start();
               </div>
               <div>
                 <span class="fw-medium d-block mb-1">Approved</span>
-                <h3 class="card-title mb-0">38</h3>
+                <h3 id="statApproved" class="card-title mb-0">0</h3>
               </div>
             </div>
           </div>
@@ -86,7 +86,7 @@ ob_start();
               </div>
               <div>
                 <span class="fw-medium d-block mb-1">Rejected</span>
-                <h3 class="card-title mb-0">7</h3>
+                <h3 id="statRejected" class="card-title mb-0">0</h3>
               </div>
             </div>
           </div>
@@ -101,7 +101,7 @@ ob_start();
               </div>
               <div>
                 <span class="fw-medium d-block mb-1">This Month</span>
-                <h3 class="card-title mb-0">25</h3>
+                <h3 id="statThisMonth" class="card-title mb-0">0</h3>
               </div>
             </div>
           </div>
@@ -471,11 +471,11 @@ ob_start();
   // Helper Functions
   function updateStatisticsCards(stats) {
     if (stats.year) {
-      // Update the statistics cards with real data
-      $('.card-body h3:contains("12")').text(stats.year.pending || 0);
-      $('.card-body h3:contains("38")').text(stats.year.approved || 0);
-      $('.card-body h3:contains("7")').text(stats.year.rejected || 0);
-      $('.card-body h3:contains("25")').text(stats.month.total || 0);
+      // Update the statistics cards with real data using stable IDs
+      $('#statPending').text(stats.year.pending || 0);
+      $('#statApproved').text(stats.year.approved || 0);
+      $('#statRejected').text(stats.year.rejected || 0);
+      $('#statThisMonth').text(stats.month.total || 0);
     }
   }
 
@@ -521,13 +521,29 @@ ob_start();
     tbody.empty();
     
     balances.forEach(function(balance) {
+      // Coerce numeric-like strings to numbers to avoid string concatenation when summing
+      const vacationRemaining = Number(balance.vacation_remaining) || 0;
+      const vacationTotal = Number(balance.vacation_total) || 0;
+      const vacationUsed = Number(balance.vacation_used) || 0;
+
+      const sickRemaining = Number(balance.sick_remaining) || 0;
+      const sickTotal = Number(balance.sick_total) || 0;
+      const sickUsed = Number(balance.sick_used) || 0;
+
+      const personalRemaining = Number(balance.personal_remaining) || 0;
+      const personalTotal = Number(balance.personal_total) || 0;
+      const personalUsed = Number(balance.personal_used) || 0;
+
+      const totalUsed = vacationUsed + sickUsed + personalUsed;
+      const totalAll = vacationTotal + sickTotal + personalTotal;
+
       const row = `
         <tr>
-          <td><strong>${balance.employee_name}</strong><br><small class="text-muted">${balance.department_name || 'N/A'}</small></td>
-          <td><span class="badge bg-success">${balance.vacation_remaining}/${balance.vacation_total}</span></td>
-          <td><span class="badge bg-info">${balance.sick_remaining}/${balance.sick_total}</span></td>
-          <td><span class="badge bg-warning">${balance.personal_remaining}/${balance.personal_total}</span></td>
-          <td><span class="badge bg-primary">${balance.vacation_used + balance.sick_used + balance.personal_used}/${balance.vacation_total + balance.sick_total + balance.personal_total}</span></td>
+          <td><strong>${escapeHtml(balance.employee_name)}</strong><br><small class="text-muted">${escapeHtml(balance.department_name || 'N/A')}</small></td>
+          <td><span class="badge bg-success">${vacationRemaining}/${vacationTotal}</span></td>
+          <td><span class="badge bg-info">${sickRemaining}/${sickTotal}</span></td>
+          <td><span class="badge bg-warning">${personalRemaining}/${personalTotal}</span></td>
+          <td><span class="badge bg-primary">${totalUsed}/${totalAll}</span></td>
         </tr>
       `;
       tbody.append(row);
