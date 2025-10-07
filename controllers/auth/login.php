@@ -14,6 +14,16 @@ class Login
 
   public function authenticate($username, $password)
   {
+    // include logger (best-effort)
+    require_once __DIR__ . '/../SystemLogger.php';
+    $logger = null;
+
+    try {
+      $logger = new SystemLogger();
+    } catch (Exception $e) {
+      error_log("Logger init failed: " . $e->getMessage());
+    }
+
     $stmt = $this->db->prepare(
       'SELECT u.user_id as user_id, u.username, u.password, e.first_name as firstname, 
               e.middle_name as middlename, e.last_name as lastname, ut.type_name AS type,
@@ -37,7 +47,25 @@ class Login
       $updateStmt = $this->db->prepare('UPDATE users SET last_login = ? WHERE user_id = ?');
       $updateStmt->execute([$_SESSION['last_login'], $user['user_id']]);
 
+      // Log successful login (best-effort)
+      try {
+        if ($logger) {
+          $logger->logAuthAction($user['user_id'], 'LOGIN');
+        }
+      } catch (Exception $e) { /* don't interrupt login on logging errors */
+        error_log('Login logging failed: ' . $e->getMessage());
+      }
+
       return true;
+    }
+    // Log failed login attempt (best-effort)
+    try {
+      if ($logger) {
+        $logger->log(null, 'LOGIN', "Failed login attempt for '{$username}'");
+      }
+    } catch (Exception $e) { 
+      /* ignore */
+      error_log('Failed login attempt logging failed: ' . $e->getMessage());
     }
     return false;
   }

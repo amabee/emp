@@ -215,11 +215,50 @@ ob_start();
           <div class="mb-3">
             <label class="form-label">Specific Employees (Optional)</label>
             <select class="form-select" name="employees[]" multiple>
-              <option value="1">Maria Santos</option>
-              <option value="2">John Doe</option>
-              <option value="3">Leila Karim</option>
-              <option value="4">Pedro Alvarez</option>
-              <option value="5">Sarah Johnson</option>
+              <?php
+              // Try to load employees from DB. If DB is unavailable, fall back to static sample list.
+              $pdo = null;
+              if (function_exists('getDBConnection')) {
+                $pdo = getDBConnection();
+              }
+
+              if ($pdo) {
+                try {
+                  $stmt = $pdo->prepare('SELECT id, first_name, last_name, middle_name FROM employees WHERE is_active = 1 ORDER BY last_name, first_name');
+                  $stmt->execute();
+                  $emps = $stmt->fetchAll();
+                  if ($emps && count($emps) > 0) {
+                    foreach ($emps as $e) {
+                      $full = trim(($e['first_name'] ?? '') . ' ' . ($e['middle_name'] ?? '') . ' ' . ($e['last_name'] ?? ''));
+                      $full = preg_replace('/\s+/', ' ', $full);
+                      echo '<option value="' . htmlspecialchars($e['id']) . '">' . htmlspecialchars($full) . '</option>';
+                    }
+                  } else {
+                    // no employees found, show placeholder
+                    echo '<option value="">-- No active employees found --</option>';
+                  }
+                } catch (Exception $ex) {
+                  // On any DB error, fall back to static list below
+                  error_log('Payroll page: failed to load employees - ' . $ex->getMessage());
+                  ?>
+                  <option value="1">Maria Santos</option>
+                  <option value="2">John Doe</option>
+                  <option value="3">Leila Karim</option>
+                  <option value="4">Pedro Alvarez</option>
+                  <option value="5">Sarah Johnson</option>
+                  <?php
+                }
+              } else {
+                // fallback static list when DB helper not available
+                ?>
+                <option value="1">Maria Santos</option>
+                <option value="2">John Doe</option>
+                <option value="3">Leila Karim</option>
+                <option value="4">Pedro Alvarez</option>
+                <option value="5">Sarah Johnson</option>
+                <?php
+              }
+              ?>
             </select>
             <small class="form-text text-muted">Hold Ctrl to select multiple employees</small>
           </div>
@@ -473,12 +512,12 @@ ob_start();
 
   function initPayrollManagement() {
     $(document).ready(function () {
-      renderPayrollRecords(dummyPayrollData);
+  loadPayrollData();
 
       // Search and filter functionality
-      $('#searchPayroll').on('keyup', function () { filterAndRenderPayroll(); });
-      $('#filterPayPeriod, #filterPayStatus, #filterPayDepartment').on('change', function () { filterAndRenderPayroll(); });
-      $('#refreshPayrollBtn').on('click', function () { renderPayrollRecords(dummyPayrollData); });
+  $('#searchPayroll').on('keyup', function () { filterAndRenderPayroll(); });
+  $('#filterPayPeriod, #filterPayStatus, #filterPayDepartment').on('change', function () { loadPayrollData(); });
+  $('#refreshPayrollBtn').on('click', function () { loadPayrollData(); });
 
       // Form submission
       $('#generatePayrollForm').on('submit', function (e) {
@@ -524,6 +563,44 @@ ob_start();
         }
       });
     });
+
+      // Load payroll data via AJAX
+      function loadPayrollData() {
+        const period = $('#filterPayPeriod').val() || '';
+        const department = $('#filterPayDepartment').val() || '';
+        $.ajax({
+          url: '../ajax/get_payroll.php',
+          method: 'GET',
+          data: { pay_period: period, department: department },
+          dataType: 'json',
+          success: function(resp) {
+            if (resp.success) {
+              const rows = resp.data || [];
+              // map rows into payroll record shape used by renderPayrollRecords
+              const mapped = rows.map((r, idx) => ({
+                id: r.employee_id,
+                employee: r.employee_name,
+                department: r.department_name,
+                pay_period: period || '<?php echo date("Y-m"); ?>',
+                basic_salary: r.basic_salary,
+                allowances: r.allowances_total || r.allowances_total === 0 ? r.allowances_total : 0,
+                deductions: r.deductions_total || 0,
+                net_pay: r.net_pay || (r.gross_pay - (r.deductions_total||0)),
+                status: 'pending',
+                pay_date: ''
+              }));
+              renderPayrollRecords(mapped);
+            } else {
+              console.error('Failed to load payroll:', resp.message);
+              renderPayrollRecords([]);
+            }
+          },
+          error: function(xhr, status, err) {
+            console.error('AJAX error loading payroll:', err);
+            renderPayrollRecords([]);
+          }
+        });
+      }
   }
 
   function renderPayrollRecords(items) {
