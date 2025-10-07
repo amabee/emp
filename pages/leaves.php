@@ -484,7 +484,13 @@ ob_start();
     employeeSelect.empty().append('<option value="">Select Employee</option>');
     
     allEmployees.forEach(function(employee) {
-      employeeSelect.append(`<option value="${employee.employee_id}">${employee.first_name} ${employee.last_name}</option>`);
+      // support multiple possible shapes returned by backend
+      const id = employee.employee_id || employee.id || employee.employeeId || employee.user_id || '';
+      const nameFromFull = employee.name || employee.employee_name || employee.employeeName;
+      const nameFromParts = ((employee.first_name || employee.firstName || '') + ' ' + (employee.last_name || employee.lastName || '')).trim();
+      const displayName = (nameFromFull || nameFromParts || 'Unknown').trim();
+      if (!id) return; // skip malformed entries
+      employeeSelect.append(`<option value="${id}">${escapeHtml(displayName)}</option>`);
     });
   }
 
@@ -493,8 +499,21 @@ ob_start();
     deptFilter.empty().append('<option value="">All Departments</option>');
     
     allDepartments.forEach(function(dept) {
-      deptFilter.append(`<option value="${dept.department_id}">${dept.department_name}</option>`);
+      const id = dept.department_id || dept.id || dept.departmentId || '';
+      const name = dept.department_name || dept.name || 'Unknown';
+      if (!id) return;
+      deptFilter.append(`<option value="${id}">${escapeHtml(name)}</option>`);
     });
+  }
+
+  // small helper to avoid injecting raw HTML when inserting names
+  function escapeHtml(unsafe) {
+    return String(unsafe)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   function populateLeaveBalancesModal(balances) {
