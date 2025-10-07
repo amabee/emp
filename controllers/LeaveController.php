@@ -70,7 +70,8 @@ class LeaveController
                         lr.start_date,
                         lr.end_date,
                         lr.status,
-                        COALESCE(lr.reason, lr.comments, '') as reason,
+                        lr.reason as reason,
+                        lr.comments as comments,
                         lr.created_at,
                         lr.updated_at,
                         lr.approved_by,
@@ -233,6 +234,13 @@ class LeaveController
     {
         try {
             $this->db->beginTransaction();
+
+            // Server-side authorization: ensure acting user is admin or hr
+            $currentUserType = $_SESSION['user_type'] ?? '';
+            $allowedTypes = ['admin', 'hr'];
+            if (!in_array(strtolower($currentUserType), $allowedTypes)) {
+                throw new Exception('Unauthorized: you do not have permission to approve or reject leave requests');
+            }
 
             // Validate status
             if (!in_array($status, ['Approved', 'Rejected'])) {

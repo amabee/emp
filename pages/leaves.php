@@ -146,17 +146,20 @@ ob_start();
           <table class="table table-borderless" id="leaveTable">
             <thead>
               <tr>
-                <th>#</th>
-                <th>Employee</th>
-                <th>Leave Type</th>
-                <th>Start Date</th>
-                <th>End Date</th>
-                <th>Days</th>
-                <th>Status</th>
-                <th>Applied On</th>
-                <th>Reason</th>
-                <th class="text-center">Actions</th>
-              </tr>
+                  <th>#</th>
+                  <th>Employee</th>
+                  <th>Leave Type</th>
+                  <th>Start Date</th>
+                  <th>End Date</th>
+                  <th>Days</th>
+                  <th>Status</th>
+                  <th>Applied On</th>
+                  <th>Reason</th>
+                  <th>Comments</th>
+                  <?php if (in_array(strtolower($user_type ?? ''), ['admin','hr'])): ?>
+                  <th class="text-center">Actions</th>
+                  <?php endif; ?>
+                </tr>
             </thead>
             <tbody id="leaveBody">
               <!-- populated by client-side dummy data -->
@@ -324,6 +327,11 @@ ob_start();
       setTimeout(waitForjQuery, 50);
     }
   })();
+
+  // Expose current user's type to client-side JS so we can control UI permissions
+  const CURRENT_USER_TYPE = <?php echo json_encode($user_type ?? ''); ?>;
+  // Debug: print current user type so we can verify client/server agreement
+  console.log('Leave page: CURRENT_USER_TYPE =', CURRENT_USER_TYPE);
 
   // Global variables
   let allLeaveData = [];
@@ -567,8 +575,9 @@ ob_start();
 
   function renderLeaveRequests(items) {
     const $body = $('#leaveBody');
-    if (!items || items.length === 0) {
-      $body.html('<tr><td colspan="10" class="text-center text-muted py-4">No leave requests found</td></tr>');
+      if (!items || items.length === 0) {
+      const cols = (['admin','hr'].includes(String(CURRENT_USER_TYPE).toLowerCase()) ? 11 : 10);
+      $body.html(`<tr><td colspan="${cols}" class="text-center text-muted py-4">No leave requests found</td></tr>`);
       return;
     }
 
@@ -602,6 +611,12 @@ ob_start();
               ${request.reason || 'No reason provided'}
             </span>
           </td>
+          <td>
+            <span class="text-truncate d-inline-block" style="max-width: 200px;" title="${request.comments || ''}">
+              ${request.comments || ''}
+            </span>
+          </td>
+          ${(['admin','hr'].includes(String(CURRENT_USER_TYPE).toLowerCase()) ? `
           <td class="text-center">
             <div class="dropdown">
               <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
@@ -626,6 +641,7 @@ ob_start();
               </div>
             </div>
           </td>
+          ` : `<td class="text-center"></td>`)}
         </tr>
       `;
     });
@@ -711,6 +727,7 @@ ob_start();
             <p><strong>Reason:</strong> ${request.reason || 'No reason provided'}</p>
             <p><strong>Applied On:</strong> ${formatDate(request.created_at)}</p>
             ${request.approved_by_name ? `<p><strong>Approved/Rejected By:</strong> ${request.approved_by_name}</p>` : ''}
+            ${request.comments ? `<p><strong>Admin Comments:</strong> ${request.comments}</p>` : ''}
             ${request.updated_at && request.updated_at !== request.created_at ? `<p><strong>Last Updated:</strong> ${formatDate(request.updated_at)}</p>` : ''}
           </div>
         `,
