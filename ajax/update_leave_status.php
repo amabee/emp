@@ -10,8 +10,8 @@ if (!isLoggedIn()) {
     exit();
 }
 
-// Check if user has permission to approve/reject leaves
-$allowedTypes = ['admin', 'supervisor', 'hr'];
+// Check if user has permission to approve/reject leaves (only admin and hr)
+$allowedTypes = ['admin', 'hr'];
 if (!in_array($_SESSION['user_type'], $allowedTypes)) {
     echo json_encode([
         'success' => false,

@@ -23,8 +23,21 @@ try {
     $leaveController = new LeaveController();
     
     // Get data from POST request
+    // Normalize leave_type from UI to DB enum values
+    $typeMap = [
+        'vacation' => 'Vacation',
+        'sick' => 'Sick',
+        'personal' => 'Personal',
+        'emergency' => 'Emergency',
+        'maternity' => 'Maternity',
+        'paternity' => 'Paternity'
+    ];
+
+    $incomingType = $_POST['leave_type'] ?? '';
+    $leaveType = $typeMap[strtolower($incomingType)] ?? ($incomingType ?: '');
+
     $data = [
-        'leave_type' => $_POST['leave_type'] ?? '',
+        'leave_type' => $leaveType,
         'start_date' => $_POST['start_date'] ?? '',
         'end_date' => $_POST['end_date'] ?? '',
         'reason' => $_POST['reason'] ?? '',

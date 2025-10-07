@@ -117,7 +117,7 @@ if (isset($page_aliases[$current_page])) {
       </li>
     <?php endif; ?>
 
-    <?php if ($user_type === 'admin' || $user_type === 'supervisor' || $user_type === 'hr'): ?>
+    <?php if ($user_type === 'admin' || $user_type === 'supervisor' || $user_type === 'hr' ): ?>
       <!-- Admin section -->
       <li class="menu-header small text-uppercase">
         <span class="menu-header-text">Management</span>
@@ -135,7 +135,6 @@ if (isset($page_aliases[$current_page])) {
         </a>
       </li>
 
-
       <li class="menu-header small text-uppercase">
         <span class="menu-header-text">Attendance & Leave</span>
       </li>
@@ -145,12 +144,7 @@ if (isset($page_aliases[$current_page])) {
           <div data-i18n="Attendance">Attendance</div>
         </a>
       </li>
-      <li class="menu-item <?php echo isMenuActive('leaves', $current_page); ?>">
-        <a href="./leaves.php" class="menu-link">
-          <i class="menu-icon tf-icons bx bx-time-five"></i>
-          <div data-i18n="Leaves">Leave Management</div>
-        </a>
-      </li>
+     
       <li class="menu-item <?php echo isMenuActive('working-calendar', $current_page); ?>">
         <a href="./working-days-calendar.php" class="menu-link">
           <i class="menu-icon tf-icons bx bx-calendar-event"></i>
@@ -159,6 +153,14 @@ if (isset($page_aliases[$current_page])) {
       </li>
 
     <?php endif; ?>
+
+
+     <li class="menu-item <?php echo isMenuActive('leaves', $current_page); ?>">
+        <a href="./leaves.php" class="menu-link">
+          <i class="menu-icon tf-icons bx bx-time-five"></i>
+            <div data-i18n="Leaves">Leave <?php echo ($user_type === 'employee' || $user_type === 'supervisor') ? 'Requests' : 'Management'; ?></div>
+        </a>
+      </li>
 
     <?php if ($user_type === 'employee'): ?>
       <li class="menu-header small text-uppercase">

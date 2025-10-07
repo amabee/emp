@@ -70,7 +70,9 @@ class LeaveController
                         lr.start_date,
                         lr.end_date,
                         lr.status,
-                        lr.reason,
+                        lr.reason as reason,
+                        lr.comments as comments,
+                        lr.half_day,
                         lr.created_at,
                         lr.updated_at,
                         lr.approved_by,
@@ -79,20 +81,65 @@ class LeaveController
                         e.last_name,
                         d.department_name,
                         jp.position_name,
-                        CONCAT(approver.first_name, ' ', approver.last_name) as approved_by_name,
-                        DATEDIFF(lr.end_date, lr.start_date) + 1 as total_days
+                        -- Resolve approver name from employees if possible, else users table
+                        COALESCE(CONCAT(approver.first_name, ' ', approver.last_name), CONCAT(u_approver.username), '') as approved_by_name,
+                        -- total_days should respect half_day flag
+                        CASE WHEN lr.half_day = 1 THEN 0.5 ELSE (DATEDIFF(lr.end_date, lr.start_date) + 1) END as total_days
                     FROM leave_records lr
                     LEFT JOIN employees e ON lr.employee_id = e.employee_id
                     LEFT JOIN department d ON e.department_id = d.department_id
                     LEFT JOIN job_position jp ON e.position_id = jp.position_id
                     LEFT JOIN users u_approver ON lr.approved_by = u_approver.user_id
-                    LEFT JOIN employees approver ON u_approver.user_id = approver.user_id
+                    LEFT JOIN employees approver ON lr.approved_by = approver.employee_id
                     $whereClause
                     ORDER BY lr.created_at DESC";
 
             $stmt = $this->db->prepare($sql);
             $stmt->execute($params);
             $leaves = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Resolve approved_by_name safely in PHP to avoid referencing missing columns in users table
+            foreach ($leaves as &$lv) {
+                $lv['approved_by_name'] = '';
+                if (!empty($lv['approved_by'])) {
+                    // First try to find an employee record with that user id
+                    $empStmt = $this->db->prepare("SELECT CONCAT(first_name, ' ', last_name) as name FROM employees WHERE user_id = :uid LIMIT 1");
+                    $empStmt->execute(['uid' => $lv['approved_by']]);
+                    $emp = $empStmt->fetch(PDO::FETCH_ASSOC);
+                    if ($emp && !empty($emp['name'])) {
+                        $lv['approved_by_name'] = $emp['name'];
+                        continue;
+                    }
+
+                    // As fallback, if approved_by references an employee_id directly (older data), try employees.employee_id
+                    $empStmt2 = $this->db->prepare("SELECT CONCAT(first_name, ' ', last_name) as name FROM employees WHERE employee_id = :eid LIMIT 1");
+                    $empStmt2->execute(['eid' => $lv['approved_by']]);
+                    $emp2 = $empStmt2->fetch(PDO::FETCH_ASSOC);
+                    if ($emp2 && !empty($emp2['name'])) {
+                        $lv['approved_by_name'] = $emp2['name'];
+                        continue;
+                    }
+                }
+                // Compute total_days using working-day rules (respect working_calendar and employee schedule)
+                try {
+                    $employeeId = $lv['employee_id'] ?? null;
+                    if (!empty($lv['half_day']) && (int)$lv['half_day'] === 1 && $lv['start_date'] === $lv['end_date']) {
+                        $lv['total_days'] = 0.5;
+                    } else {
+                        $lv['total_days'] = $this->countWorkingDays($lv['start_date'], $lv['end_date'], $employeeId);
+                    }
+                } catch (Exception $ex) {
+                    // fallback to inclusive calendar days
+                    try {
+                        $s = new DateTime($lv['start_date']);
+                        $e = new DateTime($lv['end_date']);
+                        $diff = $e->diff($s)->days + 1;
+                        $lv['total_days'] = (int)$diff;
+                    } catch (Exception $e) {
+                        $lv['total_days'] = isset($lv['total_days']) ? (float)$lv['total_days'] : 0;
+                    }
+                }
+            }
 
             return [
                 'success' => true,
@@ -130,12 +177,15 @@ class LeaveController
                 }
             }
 
-            // Validate dates
+            // Validate dates (compare date-only to allow same-day requests)
             $startDate = new DateTime($data['start_date']);
             $endDate = new DateTime($data['end_date']);
             $today = new DateTime();
 
-            if ($startDate < $today) {
+            $startYmd = $startDate->format('Y-m-d');
+            $todayYmd = $today->format('Y-m-d');
+
+            if ($startYmd < $todayYmd) {
                 throw new Exception('Start date cannot be in the past');
             }
 
@@ -150,10 +200,18 @@ class LeaveController
 
             // Check leave balance (if applicable)
             $leaveBalance = $this->getEmployeeLeaveBalance($employeeId, $data['leave_type']);
-            $requestedDays = $startDate->diff($endDate)->days + 1;
-
-            if ($data['half_day'] ?? false) {
-                $requestedDays = 0.5;
+            // Compute requested days using working-day rules
+            if (!empty($data['half_day'])) {
+                // Only allow half-day if start and end are the same day
+                if ($startYmd === $endDate->format('Y-m-d')) {
+                    $requestedDays = 0.5;
+                } else {
+                    // ignore half_day for multi-day ranges
+                    $data['half_day'] = false;
+                    $requestedDays = $this->countWorkingDays($data['start_date'], $data['end_date'], $employeeId);
+                }
+            } else {
+                $requestedDays = $this->countWorkingDays($data['start_date'], $data['end_date'], $employeeId);
             }
 
             if ($leaveBalance['available'] < $requestedDays) {
@@ -171,7 +229,7 @@ class LeaveController
                 'start_date' => $data['start_date'],
                 'end_date' => $data['end_date'],
                 'reason' => $data['reason'],
-                'half_day' => isset($data['half_day']) ? 1 : 0
+                'half_day' => !empty($data['half_day']) ? 1 : 0
             ]);
 
             $leaveId = $this->db->lastInsertId();
@@ -204,6 +262,13 @@ class LeaveController
     {
         try {
             $this->db->beginTransaction();
+
+            // Server-side authorization: ensure acting user is admin or hr
+            $currentUserType = $_SESSION['user_type'] ?? '';
+            $allowedTypes = ['admin', 'hr'];
+            if (!in_array(strtolower($currentUserType), $allowedTypes)) {
+                throw new Exception('Unauthorized: you do not have permission to approve or reject leave requests');
+            }
 
             // Validate status
             if (!in_array($status, ['Approved', 'Rejected'])) {
@@ -314,67 +379,83 @@ class LeaveController
             $whereClause = $employeeId ? "WHERE e.employee_id = :employee_id" : "";
             $params = $employeeId ? ['employee_id' => $employeeId] : [];
 
-            $sql = "SELECT 
-                        e.employee_id,
-                        CONCAT(e.first_name, ' ', e.last_name) as employee_name,
-                        d.department_name,
-                        -- Calculate leave balances
-                        15 as vacation_total,
-                        10 as sick_total,
-                        5 as personal_total,
-                        30 as emergency_total,
-                        COALESCE(vacation_used.days, 0) as vacation_used,
-                        COALESCE(sick_used.days, 0) as sick_used,
-                        COALESCE(personal_used.days, 0) as personal_used,
-                        COALESCE(emergency_used.days, 0) as emergency_used,
-                        (15 - COALESCE(vacation_used.days, 0)) as vacation_remaining,
-                        (10 - COALESCE(sick_used.days, 0)) as sick_remaining,
-                        (5 - COALESCE(personal_used.days, 0)) as personal_remaining,
-                        (30 - COALESCE(emergency_used.days, 0)) as emergency_remaining
+            // Fetch employee basic info
+            $sql = "SELECT e.employee_id, CONCAT(e.first_name, ' ', e.last_name) as employee_name, d.department_name
                     FROM employees e
                     LEFT JOIN department d ON e.department_id = d.department_id
-                    LEFT JOIN (
-                        SELECT employee_id, 
-                               SUM(DATEDIFF(end_date, start_date) + 1) as days
-                        FROM leave_records 
-                        WHERE leave_type = 'Vacation' 
-                          AND status = 'Approved' 
-                          AND YEAR(start_date) = YEAR(CURDATE())
-                        GROUP BY employee_id
-                    ) vacation_used ON e.employee_id = vacation_used.employee_id
-                    LEFT JOIN (
-                        SELECT employee_id, 
-                               SUM(DATEDIFF(end_date, start_date) + 1) as days
-                        FROM leave_records 
-                        WHERE leave_type = 'Sick' 
-                          AND status = 'Approved' 
-                          AND YEAR(start_date) = YEAR(CURDATE())
-                        GROUP BY employee_id
-                    ) sick_used ON e.employee_id = sick_used.employee_id
-                    LEFT JOIN (
-                        SELECT employee_id, 
-                               SUM(DATEDIFF(end_date, start_date) + 1) as days
-                        FROM leave_records 
-                        WHERE leave_type = 'Personal' 
-                          AND status = 'Approved' 
-                          AND YEAR(start_date) = YEAR(CURDATE())
-                        GROUP BY employee_id
-                    ) personal_used ON e.employee_id = personal_used.employee_id
-                    LEFT JOIN (
-                        SELECT employee_id, 
-                               SUM(DATEDIFF(end_date, start_date) + 1) as days
-                        FROM leave_records 
-                        WHERE leave_type = 'Emergency' 
-                          AND status = 'Approved' 
-                          AND YEAR(start_date) = YEAR(CURDATE())
-                        GROUP BY employee_id
-                    ) emergency_used ON e.employee_id = emergency_used.employee_id
                     $whereClause
                     ORDER BY e.first_name, e.last_name";
 
             $stmt = $this->db->prepare($sql);
             $stmt->execute($params);
-            $balances = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $employees = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Fetch all approved leave records for the current year
+            $sqlLeaves = "SELECT employee_id, leave_type, start_date, end_date, half_day
+                          FROM leave_records
+                          WHERE status = 'Approved'
+                            AND YEAR(start_date) = YEAR(CURDATE())";
+            $stmt2 = $this->db->prepare($sqlLeaves);
+            $stmt2->execute();
+            $leaveRows = $stmt2->fetchAll(PDO::FETCH_ASSOC);
+
+            // Build a map of used days per employee per leave type using schedule-aware counting
+            $usedMap = [];
+            foreach ($leaveRows as $lr) {
+                $eid = $lr['employee_id'];
+                $type = $lr['leave_type'];
+                if (!isset($usedMap[$eid])) $usedMap[$eid] = [];
+                if (!isset($usedMap[$eid][$type])) $usedMap[$eid][$type] = 0;
+
+                // Respect half_day flag for single-day entries
+                if (!empty($lr['half_day']) && (int)$lr['half_day'] === 1 && $lr['start_date'] === $lr['end_date']) {
+                    $usedMap[$eid][$type] += 0.5;
+                } else {
+                    $usedMap[$eid][$type] += $this->countWorkingDays($lr['start_date'], $lr['end_date'], $eid);
+                }
+            }
+
+            // Default entitlements
+            $entitlements = [
+                'Vacation' => 15,
+                'Sick' => 10,
+                'Personal' => 5,
+                'Emergency' => 30,
+                'Maternity' => 90,
+                'Paternity' => 7
+            ];
+
+            $balances = [];
+            foreach ($employees as $emp) {
+                $eid = $emp['employee_id'];
+                $vacUsed = $usedMap[$eid]['Vacation'] ?? 0;
+                $sickUsed = $usedMap[$eid]['Sick'] ?? 0;
+                $personalUsed = $usedMap[$eid]['Personal'] ?? 0;
+                $emUsed = $usedMap[$eid]['Emergency'] ?? 0;
+
+                $vacTotal = $entitlements['Vacation'];
+                $sickTotal = $entitlements['Sick'];
+                $personalTotal = $entitlements['Personal'];
+                $emTotal = $entitlements['Emergency'];
+
+                $balances[] = [
+                    'employee_id' => $eid,
+                    'employee_name' => $emp['employee_name'],
+                    'department_name' => $emp['department_name'],
+                    'vacation_total' => $vacTotal,
+                    'sick_total' => $sickTotal,
+                    'personal_total' => $personalTotal,
+                    'emergency_total' => $emTotal,
+                    'vacation_used' => $vacUsed,
+                    'sick_used' => $sickUsed,
+                    'personal_used' => $personalUsed,
+                    'emergency_used' => $emUsed,
+                    'vacation_remaining' => $vacTotal - $vacUsed,
+                    'sick_remaining' => $sickTotal - $sickUsed,
+                    'personal_remaining' => $personalTotal - $personalUsed,
+                    'emergency_remaining' => $emTotal - $emUsed
+                ];
+            }
 
             return [
                 'success' => true,
@@ -604,6 +685,61 @@ class LeaveController
                 'schedule_id' => null,
                 'calendar_id' => null
             ];
+        }
+    }
+
+    /**
+     * Count working days between two dates for an employee.
+     * Respects working_calendar entries (is_working, is_holiday, is_half_day)
+     * and falls back to Mon-Fri if calendar entry missing.
+     * Returns a float (e.g., 0.5 for half-day).
+     */
+    private function countWorkingDays($startDate, $endDate, $employeeId = null)
+    {
+        try {
+            $start = new DateTime($startDate);
+            $end = new DateTime($endDate);
+
+            if ($end < $start) return 0;
+
+            // Fetch all working_calendar rows for the date range in one query
+            $sql = "SELECT work_date, is_working, is_holiday, is_half_day FROM working_calendar WHERE work_date BETWEEN :s AND :e";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute(['s' => $start->format('Y-m-d'), 'e' => $end->format('Y-m-d')]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $calendarMap = [];
+            foreach ($rows as $r) {
+                $calendarMap[$r['work_date']] = $r;
+            }
+
+            $total = 0.0;
+            $cur = clone $start;
+            while ($cur <= $end) {
+                $d = $cur->format('Y-m-d');
+
+                // If there's a calendar entry, respect it
+                if (isset($calendarMap[$d])) {
+                    $entry = $calendarMap[$d];
+                    if ((int)$entry['is_working'] === 0 || (int)$entry['is_holiday'] === 1) {
+                        // non-working day
+                    } elseif ((int)$entry['is_half_day'] === 1) {
+                        $total += 0.5;
+                    } else {
+                        $total += 1;
+                    }
+                } else {
+                    // No calendar entry: fall back to weekday check (Mon-Fri)
+                    $dow = (int)$cur->format('N'); // 1-7
+                    if ($dow < 6) $total += 1;
+                }
+
+                $cur->add(new DateInterval('P1D'));
+            }
+
+            return $total;
+        } catch (Exception $e) {
+            return 0;
         }
     }
 }

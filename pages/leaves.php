@@ -33,6 +33,9 @@ ob_start();
             <button class="btn btn-sm btn-outline-info ms-2" id="leaveBalanceBtn" data-bs-toggle="modal" data-bs-target="#leaveBalanceModal">
               <i class="bx bx-calendar-alt me-1"></i>Leave Balances
             </button>
+            <button class="btn btn-sm btn-outline-secondary ms-2" id="leaveRuleHelp" data-bs-toggle="tooltip" title="Counting is inclusive of start/end dates. Balances and request validation use company working-calendar (holidays/weekends) when available.">
+              <i class="bx bx-help-circle me-1"></i>Counting Rules
+            </button>
           </div>
         </div>
         <div class="col-sm-5 text-center text-sm-left">
@@ -56,7 +59,7 @@ ob_start();
               </div>
               <div>
                 <span class="fw-medium d-block mb-1">Pending Requests</span>
-                <h3 class="card-title mb-0">12</h3>
+                <h3 id="statPending" class="card-title mb-0">0</h3>
               </div>
             </div>
           </div>
@@ -71,7 +74,7 @@ ob_start();
               </div>
               <div>
                 <span class="fw-medium d-block mb-1">Approved</span>
-                <h3 class="card-title mb-0">38</h3>
+                <h3 id="statApproved" class="card-title mb-0">0</h3>
               </div>
             </div>
           </div>
@@ -86,7 +89,7 @@ ob_start();
               </div>
               <div>
                 <span class="fw-medium d-block mb-1">Rejected</span>
-                <h3 class="card-title mb-0">7</h3>
+                <h3 id="statRejected" class="card-title mb-0">0</h3>
               </div>
             </div>
           </div>
@@ -101,7 +104,7 @@ ob_start();
               </div>
               <div>
                 <span class="fw-medium d-block mb-1">This Month</span>
-                <h3 class="card-title mb-0">25</h3>
+                <h3 id="statThisMonth" class="card-title mb-0">0</h3>
               </div>
             </div>
           </div>
@@ -146,17 +149,20 @@ ob_start();
           <table class="table table-borderless" id="leaveTable">
             <thead>
               <tr>
-                <th>#</th>
-                <th>Employee</th>
-                <th>Leave Type</th>
-                <th>Start Date</th>
-                <th>End Date</th>
-                <th>Days</th>
-                <th>Status</th>
-                <th>Applied On</th>
-                <th>Reason</th>
-                <th class="text-center">Actions</th>
-              </tr>
+                  <th>#</th>
+                  <th>Employee</th>
+                  <th>Leave Type</th>
+                  <th>Start Date</th>
+                  <th>End Date</th>
+                  <th>Days</th>
+                  <th>Status</th>
+                  <th>Applied On</th>
+                  <th>Reason</th>
+                  <th>Comments</th>
+                  <?php if (in_array(strtolower($user_type ?? ''), ['admin','hr'])): ?>
+                  <th class="text-center">Actions</th>
+                  <?php endif; ?>
+                </tr>
             </thead>
             <tbody id="leaveBody">
               <!-- populated by client-side dummy data -->
@@ -189,16 +195,15 @@ ob_start();
       </div>
       <div class="modal-body">
         <form id="addLeaveForm">
+          <?php if (in_array(strtolower($user_type ?? ''), ['admin','hr'])): ?>
           <div class="mb-3">
             <label class="form-label">Employee *</label>
             <select class="form-select" name="employee_id" required>
               <option value="">Select Employee</option>
-              <option value="1">Maria Santos</option>
-              <option value="2">John Doe</option>
-              <option value="3">Leila Karim</option>
-              <option value="4">Pedro Alvarez</option>
+              <!-- Employee options will be populated dynamically for admins/HR -->
             </select>
           </div>
+          <?php endif; ?>
           <div class="mb-3">
             <label class="form-label">Leave Type *</label>
             <select class="form-select" name="leave_type" required>
@@ -230,6 +235,7 @@ ob_start();
               <input class="form-check-input" type="checkbox" name="half_day" id="halfDay">
               <label class="form-check-label" for="halfDay">
                 Half Day Leave
+                <small class="text-muted" data-bs-toggle="tooltip" title="Half day is only valid when start and end date are the same. For multi-day ranges, the system treats each calendar/working day per company schedule.">(info)</small>
               </label>
             </div>
           </div>
@@ -291,7 +297,9 @@ ob_start();
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-primary">Update Balances</button>
+        <?php if (strtolower($user_type ?? '') !== 'employee' ): ?>
+          <button type="button" class="btn btn-primary">Update Balances</button>
+        <?php endif; ?>
       </div>
     </div>
   </div>
@@ -325,6 +333,11 @@ ob_start();
     }
   })();
 
+  // Expose current user's type to client-side JS so we can control UI permissions
+  const CURRENT_USER_TYPE = <?php echo json_encode($user_type ?? ''); ?>;
+  // Debug: print current user type so we can verify client/server agreement
+  console.log('Leave page: CURRENT_USER_TYPE =', CURRENT_USER_TYPE);
+
   // Global variables
   let allLeaveData = [];
   let allEmployees = [];
@@ -332,6 +345,11 @@ ob_start();
 
   function initLeaveManagement() {
     $(document).ready(function () {
+      // Initialize Bootstrap tooltips if available
+      if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        tooltipTriggerList.forEach(function (el) { new bootstrap.Tooltip(el); });
+      }
       // Load initial data
       loadLeaveData();
       loadLeaveStatistics();
@@ -471,16 +489,17 @@ ob_start();
   // Helper Functions
   function updateStatisticsCards(stats) {
     if (stats.year) {
-      // Update the statistics cards with real data
-      $('.card-body h3:contains("12")').text(stats.year.pending || 0);
-      $('.card-body h3:contains("38")').text(stats.year.approved || 0);
-      $('.card-body h3:contains("7")').text(stats.year.rejected || 0);
-      $('.card-body h3:contains("25")').text(stats.month.total || 0);
+      // Update the statistics cards with real data using stable IDs
+      $('#statPending').text(stats.year.pending || 0);
+      $('#statApproved').text(stats.year.approved || 0);
+      $('#statRejected').text(stats.year.rejected || 0);
+      $('#statThisMonth').text(stats.month.total || 0);
     }
   }
 
   function populateEmployeeDropdown() {
     const employeeSelect = $('select[name="employee_id"]');
+    if (employeeSelect.length === 0) return; // nothing to populate for non-admin/hr
     employeeSelect.empty().append('<option value="">Select Employee</option>');
     
     allEmployees.forEach(function(employee) {
@@ -521,13 +540,29 @@ ob_start();
     tbody.empty();
     
     balances.forEach(function(balance) {
+      // Coerce numeric-like strings to numbers to avoid string concatenation when summing
+      const vacationRemaining = Number(balance.vacation_remaining) || 0;
+      const vacationTotal = Number(balance.vacation_total) || 0;
+      const vacationUsed = Number(balance.vacation_used) || 0;
+
+      const sickRemaining = Number(balance.sick_remaining) || 0;
+      const sickTotal = Number(balance.sick_total) || 0;
+      const sickUsed = Number(balance.sick_used) || 0;
+
+      const personalRemaining = Number(balance.personal_remaining) || 0;
+      const personalTotal = Number(balance.personal_total) || 0;
+      const personalUsed = Number(balance.personal_used) || 0;
+
+      const totalUsed = vacationUsed + sickUsed + personalUsed;
+      const totalAll = vacationTotal + sickTotal + personalTotal;
+
       const row = `
         <tr>
-          <td><strong>${balance.employee_name}</strong><br><small class="text-muted">${balance.department_name || 'N/A'}</small></td>
-          <td><span class="badge bg-success">${balance.vacation_remaining}/${balance.vacation_total}</span></td>
-          <td><span class="badge bg-info">${balance.sick_remaining}/${balance.sick_total}</span></td>
-          <td><span class="badge bg-warning">${balance.personal_remaining}/${balance.personal_total}</span></td>
-          <td><span class="badge bg-primary">${balance.vacation_used + balance.sick_used + balance.personal_used}/${balance.vacation_total + balance.sick_total + balance.personal_total}</span></td>
+          <td><strong>${escapeHtml(balance.employee_name)}</strong><br><small class="text-muted">${escapeHtml(balance.department_name || 'N/A')}</small></td>
+          <td><span class="badge bg-success">${vacationRemaining}/${vacationTotal}</span></td>
+          <td><span class="badge bg-info">${sickRemaining}/${sickTotal}</span></td>
+          <td><span class="badge bg-warning">${personalRemaining}/${personalTotal}</span></td>
+          <td><span class="badge bg-primary">${totalUsed}/${totalAll}</span></td>
         </tr>
       `;
       tbody.append(row);
@@ -551,8 +586,9 @@ ob_start();
 
   function renderLeaveRequests(items) {
     const $body = $('#leaveBody');
-    if (!items || items.length === 0) {
-      $body.html('<tr><td colspan="10" class="text-center text-muted py-4">No leave requests found</td></tr>');
+      if (!items || items.length === 0) {
+      const cols = (['admin','hr'].includes(String(CURRENT_USER_TYPE).toLowerCase()) ? 11 : 10);
+      $body.html(`<tr><td colspan="${cols}" class="text-center text-muted py-4">No leave requests found</td></tr>`);
       return;
     }
 
@@ -578,7 +614,7 @@ ob_start();
           <td>${leaveTypeIcon} ${capitalizeFirst(request.leave_type)}</td>
           <td>${formatDate(request.start_date)}</td>
           <td>${formatDate(request.end_date)}</td>
-          <td><span class="badge bg-info">${request.total_days} day${request.total_days > 1 ? 's' : ''}</span></td>
+          <td><span class="badge bg-info">${(Number(request.total_days) % 1 === 0 ? Number(request.total_days) : request.total_days)} day${Number(request.total_days) > 1 ? 's' : ''}</span></td>
           <td>${statusBadge}</td>
           <td>${formatDate(request.created_at)}</td>
           <td>
@@ -586,6 +622,12 @@ ob_start();
               ${request.reason || 'No reason provided'}
             </span>
           </td>
+          <td>
+            <span class="text-truncate d-inline-block" style="max-width: 200px;" title="${request.comments || ''}">
+              ${request.comments || ''}
+            </span>
+          </td>
+          ${(['admin','hr'].includes(String(CURRENT_USER_TYPE).toLowerCase()) ? `
           <td class="text-center">
             <div class="dropdown">
               <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
@@ -610,6 +652,7 @@ ob_start();
               </div>
             </div>
           </td>
+          ` : `<td class="text-center"></td>`)}
         </tr>
       `;
     });
@@ -695,6 +738,7 @@ ob_start();
             <p><strong>Reason:</strong> ${request.reason || 'No reason provided'}</p>
             <p><strong>Applied On:</strong> ${formatDate(request.created_at)}</p>
             ${request.approved_by_name ? `<p><strong>Approved/Rejected By:</strong> ${request.approved_by_name}</p>` : ''}
+            ${request.comments ? `<p><strong>Admin Comments:</strong> ${request.comments}</p>` : ''}
             ${request.updated_at && request.updated_at !== request.created_at ? `<p><strong>Last Updated:</strong> ${formatDate(request.updated_at)}</p>` : ''}
           </div>
         `,
