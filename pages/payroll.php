@@ -1,10 +1,12 @@
 <?php
 $page_title = 'Payroll Management';
 $additional_css = [
-  'https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css'
+  'https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css',
+  'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css'
 ];
 $additional_js = [
-  'https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js'
+  'https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js',
+  'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js'
 ];
 
 include './shared/session_handler.php';
@@ -59,7 +61,7 @@ ob_start();
               </div>
               <div>
                 <span class="fw-medium d-block mb-1">Total Payroll</span>
-                <h3 class="card-title mb-0">₱1,245,500</h3>
+                <h3 class="card-title mb-0 loading-stat" id="totalPayrollStat">₱0</h3>
               </div>
             </div>
           </div>
@@ -74,7 +76,7 @@ ob_start();
               </div>
               <div>
                 <span class="fw-medium d-block mb-1">Employees Paid</span>
-                <h3 class="card-title mb-0">847</h3>
+                <h3 class="card-title mb-0 loading-stat" id="employeesPaidStat">0</h3>
               </div>
             </div>
           </div>
@@ -89,7 +91,7 @@ ob_start();
               </div>
               <div>
                 <span class="fw-medium d-block mb-1">Pending</span>
-                <h3 class="card-title mb-0">23</h3>
+                <h3 class="card-title mb-0 loading-stat" id="pendingStat">0</h3>
               </div>
             </div>
           </div>
@@ -104,7 +106,7 @@ ob_start();
               </div>
               <div>
                 <span class="fw-medium d-block mb-1">This Period</span>
-                <h3 class="card-title mb-0">Oct 2025</h3>
+                <h3 class="card-title mb-0 loading-stat" id="currentPeriodStat">Loading...</h3>
               </div>
             </div>
           </div>
@@ -134,11 +136,7 @@ ob_start();
           </select>
           <select class="form-select form-select-sm w-px-200" id="filterPayDepartment">
             <option value="">All Departments</option>
-            <option>HR</option>
-            <option>Engineering</option>
-            <option>Sales</option>
-            <option>Marketing</option>
-            <option>Finance</option>
+            <!-- departments will be populated dynamically via AJAX -->
           </select>
           <input type="text" class="form-control form-control-sm w-px-200" id="searchPayroll" placeholder="Search employee...">
           <button class="btn btn-sm btn-primary" id="refreshPayrollBtn"><i class="bx bx-refresh me-1"></i>Refresh</button>
@@ -182,9 +180,9 @@ ob_start();
   </div>
 </div>
 
-<!-- Generate Payroll Modal -->
+<!-- Generate Payroll Modal (XL, split layout) -->
 <div class="modal fade" id="generatePayrollModal" tabindex="-1">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-xl">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Generate Payroll</h5>
@@ -192,108 +190,105 @@ ob_start();
       </div>
       <div class="modal-body">
         <form id="generatePayrollForm">
-          <div class="mb-3">
-            <label class="form-label">Pay Period *</label>
-            <select class="form-select" name="pay_period" required>
-              <option value="">Select Pay Period</option>
-              <option value="2025-10">October 2025</option>
-              <option value="2025-11">November 2025</option>
-              <option value="2025-12">December 2025</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Department</label>
-            <select class="form-select" name="department">
-              <option value="">All Departments</option>
-              <option value="HR">HR</option>
-              <option value="Engineering">Engineering</option>
-              <option value="Sales">Sales</option>
-              <option value="Marketing">Marketing</option>
-              <option value="Finance">Finance</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Specific Employees (Optional)</label>
-            <select class="form-select" name="employees[]" multiple>
-              <?php
-              // Try to load employees from DB. If DB is unavailable, fall back to static sample list.
-              $pdo = null;
-              if (function_exists('getDBConnection')) {
-                $pdo = getDBConnection();
-              }
+          <div class="row">
+            <!-- Left: Employee list rendered as a table with checkboxes -->
+            <div class="col-lg-6 border-end" style="max-height:60vh; overflow:auto;">
+              <div class="p-3">
+                <h6 class="mb-3">Employees</h6>
+                <div class="table-responsive" style="max-height:48vh; overflow:auto;">
+                  <table class="table table-sm table-hover" id="payrollEmployeesTable">
+                    <thead>
+                      <tr>
+                        <th style="width:36px;"><input type="checkbox" id="payrollSelectAllTop"></th>
+                        <th>Name</th>
+                        <th>Department</th>
+                        <th>Position</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <!-- rows inserted via AJAX -->
+                    </tbody>
+                  </table>
+                </div>
+                <small class="form-text text-muted">Select employees to include in payroll.</small>
+                <hr>
+                <div class="d-flex justify-content-between">
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="selectAllEmployees">Select All</button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="clearSelectedEmployees">Clear</button>
+                </div>
+              </div>
+            </div>
 
-              if ($pdo) {
-                try {
-                  $stmt = $pdo->prepare('SELECT id, first_name, last_name, middle_name FROM employees WHERE is_active = 1 ORDER BY last_name, first_name');
-                  $stmt->execute();
-                  $emps = $stmt->fetchAll();
-                  if ($emps && count($emps) > 0) {
-                    foreach ($emps as $e) {
-                      $full = trim(($e['first_name'] ?? '') . ' ' . ($e['middle_name'] ?? '') . ' ' . ($e['last_name'] ?? ''));
-                      $full = preg_replace('/\s+/', ' ', $full);
-                      echo '<option value="' . htmlspecialchars($e['id']) . '">' . htmlspecialchars($full) . '</option>';
-                    }
-                  } else {
-                    // no employees found, show placeholder
-                    echo '<option value="">-- No active employees found --</option>';
-                  }
-                } catch (Exception $ex) {
-                  // On any DB error, fall back to static list below
-                  error_log('Payroll page: failed to load employees - ' . $ex->getMessage());
-                  ?>
-                  <option value="1">Maria Santos</option>
-                  <option value="2">John Doe</option>
-                  <option value="3">Leila Karim</option>
-                  <option value="4">Pedro Alvarez</option>
-                  <option value="5">Sarah Johnson</option>
-                  <?php
-                }
-              } else {
-                // fallback static list when DB helper not available
-                ?>
-                <option value="1">Maria Santos</option>
-                <option value="2">John Doe</option>
-                <option value="3">Leila Karim</option>
-                <option value="4">Pedro Alvarez</option>
-                <option value="5">Sarah Johnson</option>
-                <?php
-              }
-              ?>
-            </select>
-            <small class="form-text text-muted">Hold Ctrl to select multiple employees</small>
-          </div>
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <label class="form-label">Pay Date *</label>
-              <input type="date" class="form-control" name="pay_date" value="2025-10-15" required>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Cut-off Date *</label>
-              <input type="date" class="form-control" name="cutoff_date" value="2025-10-31" required>
-            </div>
-          </div>
-          <div class="mb-3">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" name="include_allowances" id="includeAllowances" checked>
-              <label class="form-check-label" for="includeAllowances">
-                Include Active Allowances
-              </label>
-            </div>
-          </div>
-          <div class="mb-3">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" name="include_deductions" id="includeDeductions" checked>
-              <label class="form-check-label" for="includeDeductions">
-                Include Active Deductions
-              </label>
-            </div>
-          </div>
-          <div class="mb-3">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" name="auto_process" id="autoProcess">
-              <label class="form-check-label" for="autoProcess">
-                Auto-process after generation
-              </label>
+            <!-- Right: Pay period and options -->
+            <div class="col-lg-6">
+              <div class="p-3">
+                <div class="mb-3">
+                  <label class="form-label">Pay Period *</label>
+                  <select class="form-select" name="pay_period" required>
+                    <option value="">Select Pay Period</option>
+                    <option value="2025-10">October 2025</option>
+                    <option value="2025-11">November 2025</option>
+                    <option value="2025-12">December 2025</option>
+                  </select>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Department</label>
+                  <select class="form-select" name="department">
+                    <option value="">All Departments</option>
+                    <!-- departments will be populated dynamically via AJAX; modal uses id values for server-side filtering -->
+                  </select>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Payroll Period Presets</label>
+                  <div class="btn-group w-100" role="group">
+                    <button type="button" class="btn btn-outline-secondary" id="preset1st15th">1st - 15th</button>
+                    <button type="button" class="btn btn-outline-secondary" id="preset16thEnd">16th - End</button>
+                  </div>
+                  <small class="form-text text-muted">Quick presets for common Philippine payroll periods</small>
+                </div>
+
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Period Start Date *</label>
+                    <input type="date" class="form-control" name="start_date" value="<?php echo date('Y-m-01'); ?>" required>
+                    <small class="form-text text-muted">Start of payroll period</small>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Cut-off Date *</label>
+                    <input type="date" class="form-control" name="cutoff_date" value="<?php echo date('Y-m-15'); ?>" required>
+                    <small class="form-text text-muted">End of payroll period</small>
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Pay Date *</label>
+                  <input type="date" class="form-control" name="pay_date" value="<?php echo date('Y-m-d'); ?>" required>
+                  <small class="form-text text-muted">Actual payment date</small>
+                </div>
+
+                <div class="mb-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="include_allowances" id="includeAllowances" checked>
+                    <label class="form-check-label" for="includeAllowances">Include Active Allowances</label>
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="include_deductions" id="includeDeductions" checked>
+                    <label class="form-check-label" for="includeDeductions">Include Active Deductions</label>
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="auto_process" id="autoProcess">
+                    <label class="form-check-label" for="autoProcess">Auto-process after generation</label>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </form>
@@ -435,84 +430,177 @@ ob_start();
     }
   })();
 
-  const dummyPayrollData = [
-    { 
-      id: 1, 
-      employee: 'Maria Santos', 
-      department: 'Engineering',
-      pay_period: '2025-10',
-      basic_salary: 65000,
-      allowances: 8500,
-      deductions: 4200,
-      net_pay: 69300,
-      status: 'paid', 
-      pay_date: '2025-10-15'
-    },
-    { 
-      id: 2, 
-      employee: 'John Doe', 
-      department: 'HR',
-      pay_period: '2025-10',
-      basic_salary: 45000,
-      allowances: 5200,
-      deductions: 2800,
-      net_pay: 47400,
-      status: 'paid', 
-      pay_date: '2025-10-15'
-    },
-    { 
-      id: 3, 
-      employee: 'Leila Karim', 
-      department: 'Sales',
-      pay_period: '2025-10',
-      basic_salary: 52000,
-      allowances: 7800,
-      deductions: 3600,
-      net_pay: 56200,
-      status: 'processed', 
-      pay_date: '2025-10-15'
-    },
-    { 
-      id: 4, 
-      employee: 'Pedro Alvarez', 
-      department: 'Engineering',
-      pay_period: '2025-10',
-      basic_salary: 58000,
-      allowances: 6200,
-      deductions: 3200,
-      net_pay: 61000,
-      status: 'pending', 
-      pay_date: '2025-10-15'
-    },
-    { 
-      id: 5, 
-      employee: 'Sarah Johnson', 
-      department: 'Marketing',
-      pay_period: '2025-10',
-      basic_salary: 48000,
-      allowances: 4500,
-      deductions: 2400,
-      net_pay: 50100,
-      status: 'pending', 
-      pay_date: '2025-10-15'
-    },
-    { 
-      id: 6, 
-      employee: 'Ahmed Hassan', 
-      department: 'Finance',
-      pay_period: '2025-09',
-      basic_salary: 55000,
-      allowances: 6800,
-      deductions: 3800,
-      net_pay: 58000,
-      status: 'paid', 
-      pay_date: '2025-09-15'
-    }
-  ];
+  // Will hold the payroll rows fetched/generated for the current view
+  let currentPayrollRows = [];
 
   function initPayrollManagement() {
     $(document).ready(function () {
+  loadPayrollStats();
   loadPayrollData();
+
+  // Populate department selects (header filter and modal) from server
+  function populateDepartmentSelects() {
+    $.ajax({
+      url: '../ajax/get_departments.php',
+      method: 'GET',
+      dataType: 'json'
+    }).done(function(resp) {
+      if (!resp.success) {
+        console.warn('get_departments denied or failed, attempting fallback to get_employees.php');
+        // Fallback: call legacy employees endpoint which returns departments as part of full-list response
+        $.ajax({ url: '../ajax/get_employees.php', method: 'GET', dataType: 'json' }).done(function(eResp) {
+          const depts = eResp.departments || eResp.data || [];
+          applyDepartments(depts);
+        }).fail(function() { console.error('Fallback to get_employees failed'); });
+        return;
+      }
+      // resp.data expected to be an array of {id, name}
+      const depts = resp.data || [];
+      applyDepartments(depts);
+    }).fail(function(xhr, status, err) {
+      console.warn('AJAX error loading departments, attempting fallback to get_employees.php', err);
+      $.ajax({ url: '../ajax/get_employees.php', method: 'GET', dataType: 'json' }).done(function(eResp) {
+        const depts = eResp.departments || eResp.data || [];
+        applyDepartments(depts);
+      }).fail(function() { console.error('Fallback to get_employees failed'); });
+    });
+  }
+
+  // Helper to actually add options to the selects
+  function applyDepartments(depts) {
+    const $header = $('#filterPayDepartment');
+    const $modal = $('#generatePayrollForm [name="department"]');
+    $header.find('option.dynamic-dept').remove();
+    $modal.find('option.dynamic-dept').remove();
+    (depts || []).forEach(function(d) {
+      // departments may be objects (id,name) or simple strings
+      const id = (typeof d === 'object' && d.id != null) ? d.id : d.department_id || d.departmentId || d.id || d.name;
+      const name = (typeof d === 'object') ? (d.name || d.department_name || d.department) : d;
+      const opt = `<option class="dynamic-dept" value="${escapeHtml(String(id))}">${escapeHtml(String(name))}</option>`;
+      $header.append(opt);
+      $modal.append(opt);
+    });
+  }
+
+  // populate department selects immediately
+  populateDepartmentSelects();
+
+  // Populate employee table on modal open
+  function populateEmployeeTable(filters = {}, callback) {
+    // If department is a numeric id, send it to the server for filtering. If it's a name/string, we'll filter client-side.
+    const data = {};
+    if (filters.department && (/^\d+$/.test(String(filters.department)))) data.department = filters.department;
+
+    $.ajax({
+      url: '../ajax/get_employees.php',
+      method: 'GET',
+      data: data,
+      dataType: 'json',
+      success: function(resp) {
+        const $tbody = $('#payrollEmployeesTable tbody');
+        $tbody.empty();
+        let employees = resp.employees || resp.data || [];
+
+        // If a non-numeric department filter was provided, apply it client-side by comparing names
+        if (filters.department && !(/^\d+$/.test(String(filters.department)))) {
+          const wanted = String(filters.department).toLowerCase();
+          employees = employees.filter(function(e) {
+            const dept = (e.department || e.department_name || '').toLowerCase();
+            return dept === wanted;
+          });
+        }
+
+        employees.forEach(function(e) {
+          const id = e.id || e.employee_id || e.employeeId;
+          const name = e.name || e.employee_name || e.employee || (e.first_name ? (e.first_name + ' ' + e.last_name) : '');
+          const dept = e.department || e.department_name || '';
+          const pos = e.position || e.position_name || '';
+          const row = `<tr data-employee-id="${id}">
+            <td><input type="checkbox" class="payroll-employee-checkbox" value="${id}" name="employees[]"></td>
+            <td>${escapeHtml(name)}</td>
+            <td>${escapeHtml(dept)}</td>
+            <td>${escapeHtml(pos)}</td>
+          </tr>`;
+          $tbody.append(row);
+        });
+        if (typeof callback === 'function') callback();
+      },
+      error: function() {
+        $('#payrollEmployeesTable tbody').html('<tr><td colspan="4">Failed to load employees</td></tr>');
+        if (typeof callback === 'function') callback();
+      }
+    });
+  }
+
+  // Utility to escape HTML
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+
+  // Select all / Clear buttons for table
+  $('#selectAllEmployees').on('click', function() {
+    const checkboxes = $('#payrollEmployeesTable tbody').find('.payroll-employee-checkbox');
+    checkboxes.prop('checked', true);
+  });
+
+  $('#clearSelectedEmployees').on('click', function() {
+    const checkboxes = $('#payrollEmployeesTable tbody').find('.payroll-employee-checkbox');
+    checkboxes.prop('checked', false);
+  });
+
+
+
+  // Top select-all checkbox in table header
+  $(document).on('change', '#payrollSelectAllTop', function() {
+    const checked = $(this).is(':checked');
+    $('#payrollEmployeesTable tbody').find('.payroll-employee-checkbox').prop('checked', checked);
+  });
+
+  // When modal opens, populate the table
+  $('#generatePayrollModal').on('show.bs.modal', function() {
+    // populateEmployeeTable also used earlier for Select2 fallback; reuse it here
+    const dept = $('#generatePayrollForm').find('[name="department"]').val() || '';
+    populateEmployeeTable({ department: dept });
+  });
+
+  // If department selection in the modal changes, update the employee table
+  $(document).on('change', '#generatePayrollForm [name="department"]', function() {
+    const dept = $(this).val() || '';
+    populateEmployeeTable({ department: dept });
+  });
+
+  // Payroll period preset buttons
+  $('#preset1st15th').on('click', function() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const startDate = `${year}-${month}-01`;
+    const endDate = `${year}-${month}-15`;
+    
+    $('[name="start_date"]').val(startDate);
+    $('[name="cutoff_date"]').val(endDate);
+    
+    // Also update pay_period select to current month
+    $('[name="pay_period"]').val(`${year}-${month}`);
+  });
+
+  $('#preset16thEnd').on('click', function() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const startDate = `${year}-${month}-16`;
+    
+    // Calculate last day of month
+    const lastDay = new Date(year, today.getMonth() + 1, 0).getDate();
+    const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+    
+    $('[name="start_date"]').val(startDate);
+    $('[name="cutoff_date"]').val(endDate);
+    
+    // Also update pay_period select to current month
+    $('[name="pay_period"]').val(`${year}-${month}`);
+  });
 
       // Search and filter functionality
   $('#searchPayroll').on('keyup', function () { filterAndRenderPayroll(); });
@@ -522,28 +610,92 @@ ob_start();
       // Form submission
       $('#generatePayrollForm').on('submit', function (e) {
         e.preventDefault();
-        const formData = $(this).serialize();
-        console.log('Payroll generation requested:', formData);
+        const pay_period = $(this).find('[name="pay_period"]').val();
+        const department = $(this).find('[name="department"]').val();
+        const start_date = $(this).find('[name="start_date"]').val();
+        const cutoff_date = $(this).find('[name="cutoff_date"]').val();
+        const pay_date = $(this).find('[name="pay_date"]').val();
+        // ALWAYS collect from checkboxes, ignore form inputs
+        let employeeIds = [];
         
-        // Show success message
-        if (typeof Swal !== 'undefined') {
-          Swal.fire({
-            title: 'Generating Payroll...',
-            text: 'Please wait while we process the payroll data',
-            allowOutsideClick: false,
-            didOpen: () => {
-              Swal.showLoading();
-              setTimeout(() => {
-                Swal.fire('Success!', 'Payroll generated successfully for selected employees', 'success');
-              }, 3000);
-            }
-          });
-        } else {
-          alert('Payroll generated successfully');
+        // Get all checked checkboxes
+        $('#payrollEmployeesTable tbody .payroll-employee-checkbox:checked').each(function() {
+          const empId = $(this).val();
+          if (empId && empId.trim() !== '') {
+            employeeIds.push(empId.trim());
+          }
+        });
+
+        // Validation and debugging
+        if (!pay_period) {
+          if (typeof Swal !== 'undefined') Swal.fire('Error', 'Please select a pay period', 'error');
+          return;
         }
-        
-        $('#generatePayrollModal').modal('hide');
-        this.reset();
+        if (!start_date) {
+          if (typeof Swal !== 'undefined') Swal.fire('Error', 'Please select a period start date', 'error');
+          return;
+        }
+        if (!cutoff_date) {
+          if (typeof Swal !== 'undefined') Swal.fire('Error', 'Please select a cut-off date', 'error');
+          return;
+        }
+        if (!pay_date) {
+          if (typeof Swal !== 'undefined') Swal.fire('Error', 'Please select a pay date', 'error');
+          return;
+        }
+     
+
+        // Validation: Must have at least one employee selected
+        if (employeeIds.length === 0) {
+          if (typeof Swal !== 'undefined') {
+            Swal.fire('Error', 'Please select at least one employee for payroll generation', 'error');
+          } else {
+            alert('Please select at least one employee for payroll generation');
+          }
+          return;
+        }
+        const autoProcess = $(this).find('[name="auto_process"]').is(':checked');
+
+        // Always process and save payroll to database
+        const postData = { pay_period: pay_period };
+        if (department) postData.department = department;
+        if (employeeIds && employeeIds.length) {
+          postData.employee_ids = employeeIds.join(',');
+          console.log('Final employee_ids being sent:', employeeIds, 'as string:', postData.employee_ids);
+        }
+        if (start_date) postData.start_date = start_date;
+        if (cutoff_date) postData.cutoff_date = cutoff_date;
+        if (pay_date) postData.pay_date = pay_date;
+
+        // Log payload for debugging
+        console.log('Processing payroll POST payload:', postData);
+
+        // Show loading
+        if (typeof Swal !== 'undefined') {
+          Swal.fire({ title: 'Generating and Processing Payroll...', text: 'Please wait', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        }
+
+        // Process payroll (save to database)
+        $.ajax({
+          url: '../ajax/process_payroll.php',
+          method: 'POST',
+          data: postData,
+          dataType: 'json'
+        }).done(function(procResp) {
+          console.log('process_payroll response:', procResp);
+          if (procResp.success) {
+            if (typeof Swal !== 'undefined') Swal.fire('Success!', procResp.message || 'Payroll generated and saved successfully', 'success');
+
+            loadPayrollData();
+            
+            $('#generatePayrollModal').modal('hide');
+          }
+        }).fail(function(xhr, status, err) {
+          if (typeof Swal !== 'undefined') Swal.fire('Error', 'Failed to generate payroll', 'error');
+          console.error('AJAX process_payroll failed', err, xhr && xhr.responseText);
+        }).always(function() {
+          if (typeof Swal !== 'undefined') Swal.close();
+        });
       });
 
       // Process payments button
@@ -564,32 +716,50 @@ ob_start();
       });
     });
 
+      // Load payroll statistics
+      function loadPayrollStats() {
+        $.ajax({
+          url: '../ajax/get_payroll_stats.php',
+          method: 'GET',
+          dataType: 'json',
+          success: function(resp) {
+            if (resp.success) {
+              const stats = resp.data;
+              $('#totalPayrollStat').text('₱' + formatCurrency(stats.total_payroll));
+              $('#employeesPaidStat').text(stats.employees_paid);
+              $('#pendingStat').text(stats.pending);
+              $('#currentPeriodStat').text(stats.current_period);
+            } else {
+              console.error('Failed to load payroll stats:', resp.message);
+            }
+          },
+          error: function(xhr, status, err) {
+            console.error('AJAX error loading payroll stats:', err);
+          }
+        });
+      }
+
       // Load payroll data via AJAX
       function loadPayrollData() {
         const period = $('#filterPayPeriod').val() || '';
         const department = $('#filterPayDepartment').val() || '';
+        const loadParams = {};
+        if (period) loadParams.pay_period = period;
+        if (department) loadParams.department = department;
+        
+        console.log('loadPayrollData params:', loadParams);
+        
         $.ajax({
           url: '../ajax/get_payroll.php',
           method: 'GET',
-          data: { pay_period: period, department: department },
+          data: loadParams,
           dataType: 'json',
           success: function(resp) {
             if (resp.success) {
-              const rows = resp.data || [];
-              // map rows into payroll record shape used by renderPayrollRecords
-              const mapped = rows.map((r, idx) => ({
-                id: r.employee_id,
-                employee: r.employee_name,
-                department: r.department_name,
-                pay_period: period || '<?php echo date("Y-m"); ?>',
-                basic_salary: r.basic_salary,
-                allowances: r.allowances_total || r.allowances_total === 0 ? r.allowances_total : 0,
-                deductions: r.deductions_total || 0,
-                net_pay: r.net_pay || (r.gross_pay - (r.deductions_total||0)),
-                status: 'pending',
-                pay_date: ''
-              }));
-              renderPayrollRecords(mapped);
+                const rows = resp.data || [];
+                // Backend provides properly formatted data from database
+                currentPayrollRows = rows;
+                renderPayrollRecords(currentPayrollRows);
             } else {
               console.error('Failed to load payroll:', resp.message);
               renderPayrollRecords([]);
@@ -601,6 +771,8 @@ ob_start();
           }
         });
       }
+
+      // Employee table population is handled via populateEmployeeTable() when the modal opens
   }
 
   function renderPayrollRecords(items) {
@@ -613,7 +785,7 @@ ob_start();
     let html = '';
     items.forEach((record, index) => {
       const statusBadge = getPayrollStatusBadge(record.status);
-      const payPeriodFormatted = formatPayPeriod(record.pay_period);
+      const payPeriodFormatted = formatPayrollPeriod(record.period_start, record.period_end);
       
       html += `
         <tr>
@@ -701,6 +873,22 @@ ob_start();
     return `${monthNames[parseInt(month) - 1]} ${year}`;
   }
 
+  function formatPayrollPeriod(startDate, endDate) {
+    if (!startDate || !endDate) return 'N/A';
+    
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    // If same month, show "Oct 1-15, 2025"
+    if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
+      return `${monthNames[start.getMonth()]} ${start.getDate()}-${end.getDate()}, ${start.getFullYear()}`;
+    } else {
+      // If different months, show "Oct 16 - Nov 15, 2025"
+      return `${monthNames[start.getMonth()]} ${start.getDate()} - ${monthNames[end.getMonth()]} ${end.getDate()}, ${start.getFullYear()}`;
+    }
+  }
+
   function formatDate(dateStr) {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', { 
@@ -716,7 +904,7 @@ ob_start();
     const statusFilter = $('#filterPayStatus').val();
     const deptFilter = $('#filterPayDepartment').val();
 
-    const filtered = dummyPayrollData.filter(record => {
+  const filtered = currentPayrollRows.filter(record => {
       if (periodFilter && record.pay_period !== periodFilter) return false;
       if (statusFilter && record.status !== statusFilter) return false;
       if (deptFilter && record.department !== deptFilter) return false;
@@ -729,8 +917,31 @@ ob_start();
 
   // Action functions (placeholder implementations)
   function viewPayslip(id) {
-    const record = dummyPayrollData.find(r => r.id === id);
+  const record = currentPayrollRows.find(r => r.id === id);
     if (record && typeof Swal !== 'undefined') {
+      // Build attendance details section if available
+      let attendanceHtml = '';
+      if (record.attendance_details) {
+        const att = record.attendance_details;
+        attendanceHtml = `
+          <div class="col-12 mt-3">
+            <h6 class="text-primary">📅 Attendance Summary</h6>
+            <div class="row">
+              <div class="col-6">
+                <small><strong>Working Days:</strong> ${att.working_days || 'N/A'}</small><br>
+                <small><strong>Present Days:</strong> <span class="text-success">${att.present_days || 0}</span></small><br>
+                <small><strong>Absent Days:</strong> <span class="text-danger">${att.absent_days || 0}</span></small>
+              </div>
+              <div class="col-6">
+                <small><strong>Late Days:</strong> <span class="text-warning">${att.late_days || 0}</span></small><br>
+                <small><strong>Daily Rate:</strong> ₱${formatCurrency(att.daily_rate || 0)}</small><br>
+                <small><strong>Employment:</strong> ${(att.employment_type || 'monthly').toUpperCase()}</small>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      
       Swal.fire({
         title: 'Payslip Details',
         html: `
@@ -739,8 +950,9 @@ ob_start();
             <hr>
             <div class="row">
               <div class="col-6">
-                <p><strong>Pay Period:</strong> ${formatPayPeriod(record.pay_period)}</p>
-                <p><strong>Basic Salary:</strong> ₱${formatCurrency(record.basic_salary)}</p>
+                <p><strong>Pay Period:</strong> ${formatPayrollPeriod(record.period_start, record.period_end)}</p>
+                <p><strong>Monthly Basic:</strong> ₱${formatCurrency(record.basic_salary)}</p>
+                <p><strong>Earned Basic:</strong> ₱${formatCurrency(record.earned_salary || record.basic_salary)}</p>
                 <p><strong>Allowances:</strong> +₱${formatCurrency(record.allowances)}</p>
                 <p><strong>Deductions:</strong> -₱${formatCurrency(record.deductions)}</p>
               </div>
@@ -750,10 +962,11 @@ ob_start();
                 <hr>
                 <p><strong>Net Pay:</strong> <span class="text-success">₱${formatCurrency(record.net_pay)}</span></p>
               </div>
+              ${attendanceHtml}
             </div>
           </div>
         `,
-        width: 600
+        width: 700
       });
     }
   }
@@ -773,7 +986,82 @@ ob_start();
 
   function markAsPaid(id) {
     if (typeof Swal !== 'undefined') {
-      Swal.fire('Marked as Paid!', 'Payroll record has been marked as paid', 'success');
+      Swal.fire({
+        title: 'Mark as Paid',
+        text: 'Select the payment date:',
+        input: 'date',
+        inputValue: new Date().toISOString().split('T')[0],
+        showCancelButton: true,
+        confirmButtonText: 'Mark as Paid',
+        preConfirm: (payDate) => {
+          if (!payDate) {
+            Swal.showValidationMessage('Please select a payment date');
+            return false;
+          }
+          return payDate;
+        }
+      }).then((result) => {
+        if (result.isConfirmed) {
+          const payDate = result.value;
+          
+          // Show loading
+          Swal.fire({
+            title: 'Updating...',
+            text: 'Marking payroll as paid',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+          });
+          
+          // Update pay date via AJAX
+          $.ajax({
+            url: '../ajax/update_pay_date.php',
+            method: 'POST',
+            data: {
+              payroll_id: id,
+              pay_date: payDate
+            },
+            dataType: 'json',
+            success: function(resp) {
+              if (resp.success) {
+                Swal.fire('Success!', 'Payroll has been marked as paid on ' + payDate, 'success');
+                // Refresh the payroll data to show updated status
+                loadPayrollData();
+              } else {
+                Swal.fire('Error', resp.message || 'Failed to update pay date', 'error');
+              }
+            },
+            error: function(xhr, status, err) {
+              Swal.fire('Error', 'Failed to update pay date', 'error');
+              console.error('AJAX error:', err);
+            }
+          });
+        }
+      });
+    } else {
+      // Fallback for when SweetAlert is not available
+      const payDate = prompt('Enter payment date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
+      if (payDate) {
+        $.ajax({
+          url: '../ajax/update_pay_date.php',
+          method: 'POST',
+          data: {
+            payroll_id: id,
+            pay_date: payDate
+          },
+          dataType: 'json',
+          success: function(resp) {
+            if (resp.success) {
+              alert('Payroll marked as paid!');
+              loadPayrollData();
+            } else {
+              alert('Error: ' + (resp.message || 'Failed to update pay date'));
+            }
+          },
+          error: function() {
+            alert('Failed to update pay date');
+          }
+        });
+      }
     }
   }
 

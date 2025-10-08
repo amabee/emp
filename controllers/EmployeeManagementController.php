@@ -139,6 +139,74 @@ class EmployeeManagementController
         }
     }
 
+    /**
+     * Get employees with pagination support. Returns ['results' => [...], 'total' => n]
+     * Supports filters: search, department, page (1-based), per_page
+     */
+    public function getEmployeesPaginated($filters = [])
+    {
+        try {
+            $whereClause = "WHERE e.employment_status = 1 AND (u.user_type_id IS NULL OR u.user_type_id != 1)";
+            $params = [];
+
+            if (!empty($filters['search'])) {
+                $whereClause .= " AND (CONCAT(e.first_name, ' ', e.last_name) LIKE ? OR e.email LIKE ?)";
+                $searchTerm = '%' . $filters['search'] . '%';
+                $params[] = $searchTerm;
+                $params[] = $searchTerm;
+            }
+
+            if (!empty($filters['department'])) {
+                $whereClause .= " AND e.department_id = ?";
+                $params[] = $filters['department'];
+            }
+
+            // Count total
+            $countSql = "SELECT COUNT(*) as cnt FROM employees e LEFT JOIN users u ON e.user_id = u.user_id $whereClause";
+            $countStmt = $this->db->prepare($countSql);
+            $countStmt->execute($params);
+            $total = intval($countStmt->fetchColumn());
+
+            $page = max(1, intval($filters['page'] ?? 1));
+            $perPage = max(10, intval($filters['per_page'] ?? 20));
+            $offset = ($page - 1) * $perPage;
+
+            // Inject numeric LIMIT/OFFSET directly to avoid binding issues in some MySQL versions
+            $limit = intval($perPage);
+            $off = intval($offset);
+
+            $sql = "
+                SELECT 
+                    e.employee_id as id,
+                    CONCAT(e.first_name, ' ', COALESCE(CONCAT(e.middle_name, ' '), ''), e.last_name) as name,
+                    e.email,
+                    e.contact_number,
+                    COALESCE(jp.position_name, 'No Position') as position,
+                    CASE WHEN e.employment_status = 1 THEN 'Active' ELSE 'Inactive' END as status,
+                    COALESCE(d.department_name, 'No Department') as department,
+                    e.date_hired as created_at,
+                    e.user_id,
+                    e.image
+                FROM employees e
+                LEFT JOIN users u ON e.user_id = u.user_id
+                LEFT JOIN department d ON e.department_id = d.department_id
+                LEFT JOIN job_position jp ON e.position_id = jp.position_id
+                $whereClause
+                ORDER BY e.date_hired DESC, e.employee_id DESC
+                LIMIT {$limit} OFFSET {$off}
+            ";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            $rows = $stmt->fetchAll();
+
+            return ['results' => $rows, 'total' => $total];
+
+        } catch (Exception $e) {
+            throw new Exception('Failed to get employees (paginated): ' . $e->getMessage());
+        }
+    }
+
     public function getAllDepartments()
     {
         try {
