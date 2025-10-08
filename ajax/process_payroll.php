@@ -13,55 +13,72 @@ try {
     $pc = new PayrollController();
     $logger = new SystemLogger();
 
-    $pay_period = $_POST['pay_period'] ?? date('Y-m');
+    $pay_period = $_POST['pay_period'] ?? null;
+    if (empty($pay_period)) {
+        $pay_period = date('Y-m');
+    }
+    
     $department = $_POST['department'] ?? null;
+    $employee_ids = [];
+    // Accept employee_ids either as CSV string in 'employee_ids' or as array 'employees' (from form arrays)
+    if (!empty($_POST['employee_ids'])) {
+        if (is_array($_POST['employee_ids'])) {
+            $employee_ids = array_map('intval', $_POST['employee_ids']);
+        } else {
+            $employee_ids = array_map('intval', explode(',', $_POST['employee_ids']));
+        }
+    } elseif (!empty($_POST['employees']) && is_array($_POST['employees'])) {
+        $employee_ids = array_map('intval', $_POST['employees']);
+    }
+
+    // Debug log for backend
+    error_log("process_payroll.php - pay_period: $pay_period, department: $department, employee_ids: " . json_encode($employee_ids) . ", pay_date: $pay_date");
 
     $filters = [];
     if ($department) $filters['department'] = $department;
+    if (!empty($employee_ids)) $filters['employee_ids'] = $employee_ids;
 
-    $rows = $pc->generatePayroll($pay_period, $filters);
-
-    // Ensure payroll_records table exists (simple schema)
-    $db = getDBConnection();
-    $db->exec("CREATE TABLE IF NOT EXISTS payroll_records (
-        payroll_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-        employee_id INT NOT NULL,
-        pay_period VARCHAR(7) NOT NULL,
-        basic_salary DECIMAL(12,2) DEFAULT 0,
-        allowances_total DECIMAL(12,2) DEFAULT 0,
-        deductions_total DECIMAL(12,2) DEFAULT 0,
-        overtime_total DECIMAL(12,2) DEFAULT 0,
-        gross_pay DECIMAL(12,2) DEFAULT 0,
-        net_pay DECIMAL(12,2) DEFAULT 0,
-        status VARCHAR(32) DEFAULT 'pending',
-        processed_by INT NULL,
-        processed_at DATETIME NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-
-    // Insert rows
-    $ins = $db->prepare("INSERT INTO payroll_records (employee_id, pay_period, basic_salary, allowances_total, deductions_total, overtime_total, gross_pay, net_pay, status, processed_by, processed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'processed', ?, NOW())");
-    $inserted = 0;
     $processedBy = $_SESSION['user_id'] ?? null;
-    foreach ($rows as $r) {
-        $ins->execute([
-            $r['employee_id'],
-            $pay_period,
-            $r['basic_salary'],
-            $r['allowances_total'],
-            $r['deductions_total'],
-            $r['overtime_total'],
-            $r['gross_pay'],
-            $r['net_pay'],
-            $processedBy
-        ]);
-        $inserted++;
+    
+    // Get pay_date from POST data
+    $pay_date = $_POST['pay_date'] ?? null;
+    if (!empty($pay_date)) {
+        // Validate the date format
+        $dateTime = DateTime::createFromFormat('Y-m-d', $pay_date);
+        if (!$dateTime || $dateTime->format('Y-m-d') !== $pay_date) {
+            $pay_date = null; // Invalid date, set to null
+        }
     }
 
-    // Log processing
-    try { $logger->logAuthAction($processedBy, 'PROCESS PAYROLL', "Processed payroll for {$pay_period} - {$inserted} records"); } catch (Exception $e) {}
+    // options: updateExisting may be passed as 'updateExisting' => true
+    $options = [];
+    if (isset($_POST['updateExisting'])) $options['updateExisting'] = boolval($_POST['updateExisting']);
 
-    echo json_encode(['success' => true, 'message' => "Processed payroll for {$pay_period}", 'inserted' => $inserted]);
+    try {
+        $res = $pc->processPayroll($pay_period, $filters, $processedBy, $options, $pay_date);
+        try { $logger->logAuthAction($processedBy, 'PROCESS PAYROLL', "Processed payroll for {$pay_period} - {$res['inserted']} inserted, {$res['updated']} updated"); } catch (Exception $e) {}
+        // Also return which employees were stored for this period for debugging/visibility
+        try {
+            $periodStart = (new DateTime($pay_period . '-01'))->format('Y-m-d');
+            $db = getDBConnection();
+            if (!empty($employee_ids)) {
+                $placeholders = implode(',', array_fill(0, count($employee_ids), '?'));
+                $q = $db->prepare("SELECT employee_id FROM payroll WHERE period_start = ? AND employee_id IN ($placeholders)");
+                $params = array_merge([$periodStart], $employee_ids);
+                $q->execute($params);
+            } else {
+                $q = $db->prepare("SELECT employee_id FROM payroll WHERE period_start = ?");
+                $q->execute([$periodStart]);
+            }
+            $processedEmployees = $q->fetchAll(PDO::FETCH_COLUMN);
+        } catch (Exception $_e) {
+            $processedEmployees = [];
+        }
+
+        echo json_encode(['success' => true, 'message' => "Processed payroll for {$pay_period}", 'inserted' => $res['inserted'], 'updated' => $res['updated'], 'processed_employee_ids' => $processedEmployees]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
 
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
