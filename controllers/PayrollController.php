@@ -19,13 +19,22 @@ class PayrollController
      */
     public function generatePayroll($payPeriod, $filters = [])
     {
-        // parse payPeriod into date range (assume full month)
-        try {
-            $start = new DateTime($payPeriod . '-01');
-        } catch (Exception $e) {
-            throw new Exception('Invalid pay period');
+        // parse payPeriod into date range - use custom dates if provided, otherwise full month
+        if (!empty($filters['custom_start']) && !empty($filters['custom_end'])) {
+            try {
+                $start = new DateTime($filters['custom_start']);
+                $end = new DateTime($filters['custom_end']);
+            } catch (Exception $e) {
+                throw new Exception('Invalid custom date range');
+            }
+        } else {
+            try {
+                $start = new DateTime($payPeriod . '-01');
+            } catch (Exception $e) {
+                throw new Exception('Invalid pay period');
+            }
+            $end = (clone $start)->modify('last day of this month');
         }
-        $end = (clone $start)->modify('last day of this month');
 
         // Load employees (filter by department or specific employees if provided)
         $params = [];
@@ -56,6 +65,12 @@ class PayrollController
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         $employees = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Debug logging
+        error_log("PayrollController - generatePayroll: Found " . count($employees) . " employees for period " . $start->format('Y-m-d') . " to " . $end->format('Y-m-d'));
+        foreach ($employees as $emp) {
+            error_log("Employee: " . $emp['employee_name'] . " (ID: " . $emp['employee_id'] . ") - Basic Salary: " . $emp['basic_salary']);
+        }
 
     // Preload allowances per employee
     // Note: some DB dumps don't have an `is_active` column on employee_allowance,
@@ -89,12 +104,66 @@ class PayrollController
             $otMap[$r['employee_id']] = floatval($r['ot_amount']);
         }
 
+        // Get working days for the period
+        $workingDays = $this->getWorkingDaysInPeriod($start, $end);
+        $totalWorkingDays = count($workingDays);
+        
+        error_log("PayrollController - Period " . $start->format('Y-m-d') . " to " . $end->format('Y-m-d') . ": $totalWorkingDays working days");
+
         // Build payroll rows
         $rows = [];
         foreach ($employees as $emp) {
             $eid = $emp['employee_id'];
-            $basic = floatval($emp['basic_salary'] ?? 0);
+            $monthlyBasic = floatval($emp['basic_salary'] ?? 0);
+            
+            // Get attendance records for this employee in the period
+            $attendanceStmt = $this->db->prepare("SELECT date, status FROM attendance WHERE employee_id = ? AND date BETWEEN ? AND ?");
+            $attendanceStmt->execute([$eid, $start->format('Y-m-d'), $end->format('Y-m-d')]);
+            $attendanceRecords = $attendanceStmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Count present days
+            $presentDays = 0;
+            $lateDays = 0;
+            foreach ($attendanceRecords as $record) {
+                $status = strtolower($record['status'] ?? '');
+                if (in_array($status, ['present', 'late', 'partial'])) {
+                    $presentDays++;
+                    if ($status === 'late') $lateDays++;
+                }
+            }
+            
+            $absentDays = $totalWorkingDays - $presentDays;
+            
+            // Calculate pro-rated salary based on attendance
+            if ($totalWorkingDays > 0) {
+                // For 15-day periods: divide monthly by 2
+                // For custom periods: pro-rate based on working days vs full month (typically 22 working days)
+                $monthlyWorkingDays = 22; // Standard assumption for PH
+                $periodRatio = $totalWorkingDays / $monthlyWorkingDays;
+                $expectedSalaryForPeriod = $monthlyBasic * $periodRatio;
+                
+                // Pro-rate based on attendance
+                $attendanceRatio = $totalWorkingDays > 0 ? ($presentDays / $totalWorkingDays) : 0;
+                $basic = $expectedSalaryForPeriod * $attendanceRatio;
+            } else {
+                $basic = 0; // No working days = no pay
+            }
+            
+            $attendanceDetails = [
+                'monthly_basic' => $monthlyBasic,
+                'working_days' => $totalWorkingDays,
+                'present_days' => $presentDays,
+                'absent_days' => $absentDays,
+                'late_days' => $lateDays,
+                'attendance_ratio' => $attendanceRatio ?? 0,
+                'expected_for_period' => $expectedSalaryForPeriod ?? 0,
+                'daily_rate' => $totalWorkingDays > 0 ? ($expectedSalaryForPeriod / $totalWorkingDays) : 0
+            ];
+            
+            error_log("PayrollController - Employee $eid ($monthlyBasic monthly): $presentDays/$totalWorkingDays days = " . number_format($basic, 2));
+            
             $allowTotal = isset($allowMap[$eid]) ? array_sum($allowMap[$eid]) : 0.0;
+            
             // compute deduction total: fixed amounts + percentage amounts applied to gross (basic + allowances)
             $dedTotal = 0.0;
             if (isset($dedMap[$eid])) {
@@ -117,16 +186,69 @@ class PayrollController
                 'employee_id' => $eid,
                 'employee_name' => $emp['employee_name'],
                 'department_name' => $emp['department_name'] ?? null,
-                'basic_salary' => $basic,
+                'monthly_basic_salary' => $monthlyBasic, // Original monthly salary
+                'basic_salary' => $basic, // Attendance-adjusted salary
                 'allowances_total' => $allowTotal,
                 'deductions_total' => $dedTotal,
                 'overtime_total' => $otTotal,
                 'gross_pay' => $gross,
-                'net_pay' => $net
+                'net_pay' => $net,
+                'attendance_details' => $attendanceDetails ?? []
             ];
         }
 
         return $rows;
+    }
+
+
+    
+    /**
+     * Get working days within a date range based on working calendar
+     */
+    private function getWorkingDaysInPeriod($startDate, $endDate)
+    {
+        // Get working calendar data
+        $sql = "SELECT work_date, is_working FROM working_calendar 
+                WHERE work_date BETWEEN ? AND ?";
+        
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
+            $calendarData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $workingDays = [];
+            foreach ($calendarData as $day) {
+                if (intval($day['is_working']) === 1) {
+                    $workingDays[] = $day['work_date'];
+                }
+            }
+            
+            // If no calendar data, fall back to Monday-Friday as working days
+            if (empty($workingDays)) {
+                $current = clone $startDate;
+                while ($current <= $endDate) {
+                    $dayOfWeek = intval($current->format('N')); // 1=Monday, 7=Sunday
+                    if ($dayOfWeek >= 1 && $dayOfWeek <= 5) { // Monday to Friday
+                        $workingDays[] = $current->format('Y-m-d');
+                    }
+                    $current->modify('+1 day');
+                }
+            }
+            
+            return $workingDays;
+        } catch (Exception $e) {
+            // Fallback to Monday-Friday
+            $workingDays = [];
+            $current = clone $startDate;
+            while ($current <= $endDate) {
+                $dayOfWeek = intval($current->format('N'));
+                if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
+                    $workingDays[] = $current->format('Y-m-d');
+                }
+                $current->modify('+1 day');
+            }
+            return $workingDays;
+        }
     }
 
     /**
@@ -134,18 +256,23 @@ class PayrollController
      * $options: ['updateExisting' => false]
      * Returns array: ['inserted' => n, 'updated' => m]
      */
-    public function processPayroll($payPeriod, $filters = [], $processedBy = null, $options = [], $payDate = null)
+    public function processPayroll($payPeriod, $filters = [], $processedBy = null, $options = [], $payDate = null, $startDate = null, $cutoffDate = null)
     {
         $opts = array_merge(['updateExisting' => false], $options ?: []);
 
-        // parse period start/end
-        try {
-            $startDt = new DateTime($payPeriod . '-01');
-        } catch (Exception $e) {
-            throw new Exception('Invalid pay period');
+        // parse period start/end - use custom dates if provided, otherwise default to full month
+        if (!empty($startDate) && !empty($cutoffDate)) {
+            $periodStart = $startDate;
+            $periodEnd = $cutoffDate;
+        } else {
+            try {
+                $startDt = new DateTime($payPeriod . '-01');
+            } catch (Exception $e) {
+                throw new Exception('Invalid pay period');
+            }
+            $periodStart = $startDt->format('Y-m-d');
+            $periodEnd = (clone $startDt)->modify('last day of this month')->format('Y-m-d');
         }
-        $periodStart = $startDt->format('Y-m-d');
-        $periodEnd = (clone $startDt)->modify('last day of this month')->format('Y-m-d');
 
         // Ensure payroll table has processed_by and processed_at columns; migrate existing rows
         $schemaStmt = $this->db->prepare("SELECT COUNT(*) as cnt FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'payroll' AND COLUMN_NAME = 'processed_by'");
@@ -157,8 +284,13 @@ class PayrollController
             $this->db->exec("UPDATE payroll SET processed_at = created_at WHERE processed_at IS NULL");
         }
 
-        // Generate rows
-        $rows = $this->generatePayroll($payPeriod, $filters);
+        // Generate rows - pass custom date range if available
+        $generateFilters = $filters;
+        if (!empty($startDate) && !empty($cutoffDate)) {
+            $generateFilters['custom_start'] = $startDate;
+            $generateFilters['custom_end'] = $cutoffDate;
+        }
+        $rows = $this->generatePayroll($payPeriod, $generateFilters);
 
         $inserted = 0;
         $updated = 0;

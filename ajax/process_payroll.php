@@ -31,31 +31,46 @@ try {
         $employee_ids = array_map('intval', $_POST['employees']);
     }
 
+    // Get date parameters from POST data
+    $start_date = $_POST['start_date'] ?? null;
+    $cutoff_date = $_POST['cutoff_date'] ?? null;
+    $pay_date = $_POST['pay_date'] ?? null;
+    
+    // Validate date formats
+    if (!empty($start_date)) {
+        $dateTime = DateTime::createFromFormat('Y-m-d', $start_date);
+        if (!$dateTime || $dateTime->format('Y-m-d') !== $start_date) {
+            $start_date = null;
+        }
+    }
+    if (!empty($cutoff_date)) {
+        $dateTime = DateTime::createFromFormat('Y-m-d', $cutoff_date);
+        if (!$dateTime || $dateTime->format('Y-m-d') !== $cutoff_date) {
+            $cutoff_date = null;
+        }
+    }
+    if (!empty($pay_date)) {
+        $dateTime = DateTime::createFromFormat('Y-m-d', $pay_date);
+        if (!$dateTime || $dateTime->format('Y-m-d') !== $pay_date) {
+            $pay_date = null;
+        }
+    }
+
     // Debug log for backend
-    error_log("process_payroll.php - pay_period: $pay_period, department: $department, employee_ids: " . json_encode($employee_ids) . ", pay_date: $pay_date");
+    error_log("process_payroll.php - pay_period: $pay_period, department: $department, employee_ids: " . json_encode($employee_ids) . ", start_date: $start_date, cutoff_date: $cutoff_date, pay_date: $pay_date");
 
     $filters = [];
     if ($department) $filters['department'] = $department;
     if (!empty($employee_ids)) $filters['employee_ids'] = $employee_ids;
 
     $processedBy = $_SESSION['user_id'] ?? null;
-    
-    // Get pay_date from POST data
-    $pay_date = $_POST['pay_date'] ?? null;
-    if (!empty($pay_date)) {
-        // Validate the date format
-        $dateTime = DateTime::createFromFormat('Y-m-d', $pay_date);
-        if (!$dateTime || $dateTime->format('Y-m-d') !== $pay_date) {
-            $pay_date = null; // Invalid date, set to null
-        }
-    }
 
     // options: updateExisting may be passed as 'updateExisting' => true
     $options = [];
     if (isset($_POST['updateExisting'])) $options['updateExisting'] = boolval($_POST['updateExisting']);
 
     try {
-        $res = $pc->processPayroll($pay_period, $filters, $processedBy, $options, $pay_date);
+        $res = $pc->processPayroll($pay_period, $filters, $processedBy, $options, $pay_date, $start_date, $cutoff_date);
         try { $logger->logAuthAction($processedBy, 'PROCESS PAYROLL', "Processed payroll for {$pay_period} - {$res['inserted']} inserted, {$res['updated']} updated"); } catch (Exception $e) {}
         // Also return which employees were stored for this period for debugging/visibility
         try {

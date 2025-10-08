@@ -240,15 +240,32 @@ ob_start();
                   </select>
                 </div>
 
+                <div class="mb-3">
+                  <label class="form-label">Payroll Period Presets</label>
+                  <div class="btn-group w-100" role="group">
+                    <button type="button" class="btn btn-outline-secondary" id="preset1st15th">1st - 15th</button>
+                    <button type="button" class="btn btn-outline-secondary" id="preset16thEnd">16th - End</button>
+                  </div>
+                  <small class="form-text text-muted">Quick presets for common Philippine payroll periods</small>
+                </div>
+
                 <div class="row mb-3">
                   <div class="col-md-6">
-                    <label class="form-label">Pay Date *</label>
-                    <input type="date" class="form-control" name="pay_date" value="<?php echo date('Y-m-d'); ?>" required>
+                    <label class="form-label">Period Start Date *</label>
+                    <input type="date" class="form-control" name="start_date" value="<?php echo date('Y-m-01'); ?>" required>
+                    <small class="form-text text-muted">Start of payroll period</small>
                   </div>
                   <div class="col-md-6">
                     <label class="form-label">Cut-off Date *</label>
-                    <input type="date" class="form-control" name="cutoff_date" value="2025-10-31" required>
+                    <input type="date" class="form-control" name="cutoff_date" value="<?php echo date('Y-m-15'); ?>" required>
+                    <small class="form-text text-muted">End of payroll period</small>
                   </div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Pay Date *</label>
+                  <input type="date" class="form-control" name="pay_date" value="<?php echo date('Y-m-d'); ?>" required>
+                  <small class="form-text text-muted">Actual payment date</small>
                 </div>
 
                 <div class="mb-3">
@@ -523,12 +540,16 @@ ob_start();
 
   // Select all / Clear buttons for table
   $('#selectAllEmployees').on('click', function() {
-    $('#payrollEmployeesTable tbody').find('.payroll-employee-checkbox').prop('checked', true);
+    const checkboxes = $('#payrollEmployeesTable tbody').find('.payroll-employee-checkbox');
+    checkboxes.prop('checked', true);
   });
 
   $('#clearSelectedEmployees').on('click', function() {
-    $('#payrollEmployeesTable tbody').find('.payroll-employee-checkbox').prop('checked', false);
+    const checkboxes = $('#payrollEmployeesTable tbody').find('.payroll-employee-checkbox');
+    checkboxes.prop('checked', false);
   });
+
+
 
   // Top select-all checkbox in table header
   $(document).on('change', '#payrollSelectAllTop', function() {
@@ -549,6 +570,38 @@ ob_start();
     populateEmployeeTable({ department: dept });
   });
 
+  // Payroll period preset buttons
+  $('#preset1st15th').on('click', function() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const startDate = `${year}-${month}-01`;
+    const endDate = `${year}-${month}-15`;
+    
+    $('[name="start_date"]').val(startDate);
+    $('[name="cutoff_date"]').val(endDate);
+    
+    // Also update pay_period select to current month
+    $('[name="pay_period"]').val(`${year}-${month}`);
+  });
+
+  $('#preset16thEnd').on('click', function() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const startDate = `${year}-${month}-16`;
+    
+    // Calculate last day of month
+    const lastDay = new Date(year, today.getMonth() + 1, 0).getDate();
+    const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+    
+    $('[name="start_date"]').val(startDate);
+    $('[name="cutoff_date"]').val(endDate);
+    
+    // Also update pay_period select to current month
+    $('[name="pay_period"]').val(`${year}-${month}`);
+  });
+
       // Search and filter functionality
   $('#searchPayroll').on('keyup', function () { filterAndRenderPayroll(); });
   $('#filterPayPeriod, #filterPayStatus, #filterPayDepartment').on('change', function () { loadPayrollData(); });
@@ -559,126 +612,87 @@ ob_start();
         e.preventDefault();
         const pay_period = $(this).find('[name="pay_period"]').val();
         const department = $(this).find('[name="department"]').val();
+        const start_date = $(this).find('[name="start_date"]').val();
+        const cutoff_date = $(this).find('[name="cutoff_date"]').val();
         const pay_date = $(this).find('[name="pay_date"]').val();
-        let employeeIds = $(this).find('[name="employees[]"]').val() || [];
-        // If using table checkboxes, ensure we collect checked values
-        if ((!employeeIds || employeeIds.length === 0) && $('#payrollEmployeesTable').length) {
-          employeeIds = $('#payrollEmployeesTable tbody').find('.payroll-employee-checkbox:checked').map(function() { return $(this).val(); }).get();
-        }
+        // ALWAYS collect from checkboxes, ignore form inputs
+        let employeeIds = [];
+        
+        // Get all checked checkboxes
+        $('#payrollEmployeesTable tbody .payroll-employee-checkbox:checked').each(function() {
+          const empId = $(this).val();
+          if (empId && empId.trim() !== '') {
+            employeeIds.push(empId.trim());
+          }
+        });
 
         // Validation and debugging
         if (!pay_period) {
           if (typeof Swal !== 'undefined') Swal.fire('Error', 'Please select a pay period', 'error');
           return;
         }
-        console.log('Form submission debug:', { pay_period, department, pay_date, employeeIds });
+        if (!start_date) {
+          if (typeof Swal !== 'undefined') Swal.fire('Error', 'Please select a period start date', 'error');
+          return;
+        }
+        if (!cutoff_date) {
+          if (typeof Swal !== 'undefined') Swal.fire('Error', 'Please select a cut-off date', 'error');
+          return;
+        }
+        if (!pay_date) {
+          if (typeof Swal !== 'undefined') Swal.fire('Error', 'Please select a pay date', 'error');
+          return;
+        }
+     
 
-        // Normalize employeeIds to an array (could be a single string/number or a single value from legacy select)
-        if (!Array.isArray(employeeIds)) {
-          if (employeeIds === null || employeeIds === undefined) {
-            employeeIds = [];
-          } else if (typeof employeeIds === 'string' || typeof employeeIds === 'number') {
-            employeeIds = [String(employeeIds)];
+        // Validation: Must have at least one employee selected
+        if (employeeIds.length === 0) {
+          if (typeof Swal !== 'undefined') {
+            Swal.fire('Error', 'Please select at least one employee for payroll generation', 'error');
           } else {
-            try {
-              employeeIds = Array.from(employeeIds);
-            } catch (e) {
-              employeeIds = [];
-            }
+            alert('Please select at least one employee for payroll generation');
           }
+          return;
         }
         const autoProcess = $(this).find('[name="auto_process"]').is(':checked');
 
-        // Build params for GET
-        const params = { pay_period: pay_period };
-        if (department) params.department = department;
-        if (employeeIds && employeeIds.length) params.employee_ids = employeeIds.join(',');
+        // Always process and save payroll to database
+        const postData = { pay_period: pay_period };
+        if (department) postData.department = department;
+        if (employeeIds && employeeIds.length) {
+          postData.employee_ids = employeeIds.join(',');
+          console.log('Final employee_ids being sent:', employeeIds, 'as string:', postData.employee_ids);
+        }
+        if (start_date) postData.start_date = start_date;
+        if (cutoff_date) postData.cutoff_date = cutoff_date;
+        if (pay_date) postData.pay_date = pay_date;
 
-        // Debug log params being sent
-        console.log('GET params being sent to get_payroll.php:', params);
+        // Log payload for debugging
+        console.log('Processing payroll POST payload:', postData);
 
         // Show loading
         if (typeof Swal !== 'undefined') {
-          Swal.fire({ title: 'Generating Payroll...', text: 'Please wait', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+          Swal.fire({ title: 'Generating and Processing Payroll...', text: 'Please wait', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         }
 
+        // Process payroll (save to database)
         $.ajax({
-          url: '../ajax/get_payroll.php',
-          method: 'GET',
-          data: params,
+          url: '../ajax/process_payroll.php',
+          method: 'POST',
+          data: postData,
           dataType: 'json'
-        }).done(function(resp) {
-          if (!resp.success) {
-            if (typeof Swal !== 'undefined') Swal.fire('Error', resp.message || 'Failed to generate payroll', 'error');
-            console.error('get_payroll error', resp);
-            return;
-          }
+        }).done(function(procResp) {
+          console.log('process_payroll response:', procResp);
+          if (procResp.success) {
+            if (typeof Swal !== 'undefined') Swal.fire('Success!', procResp.message || 'Payroll generated and saved successfully', 'success');
 
-          const rows = resp.data || [];
-          // Backend now provides properly formatted data
-          const mapped = rows.map((r) => ({
-            ...r,
-            pay_period: pay_period // Ensure correct pay period
-          }));
-
-          // Keep runtime state of current rows for filtering and actions
-          currentPayrollRows = mapped;
-          renderPayrollRecords(currentPayrollRows);
-
-          // Auto-process if requested
-          if (autoProcess) {
-            const postData = { pay_period: pay_period };
-            if (department) postData.department = department;
-            if (employeeIds && employeeIds.length) postData.employee_ids = employeeIds.join(',');
-            if (pay_date) postData.pay_date = pay_date;
-
-            // Log payload for debugging
-            console.log('Processing payroll POST payload:', postData);
-            if (typeof Swal !== 'undefined') Swal.fire({ title: 'Processing payroll...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-            $.ajax({
-              url: '../ajax/process_payroll.php',
-              method: 'POST',
-              data: postData,
-              dataType: 'json'
-            }).done(function(procResp) {
-              console.log('process_payroll response:', procResp);
-              if (procResp.success) {
-                if (typeof Swal !== 'undefined') Swal.fire('Processed', procResp.message || 'Payroll processed', 'success');
-              } else {
-                if (typeof Swal !== 'undefined') Swal.fire('Error', procResp.message || 'Payroll processing failed', 'error');
-                console.error('process_payroll returned error', procResp);
-              }
-
-              // If server returned processed employee ids or counts, log them and update UI mapping
-              const procIds = procResp.processed_employee_ids || [];
-              // Update status for processed employees
-              const mappedAfterProcess = rows.map((r) => ({
-                ...r,
-                status: procIds.includes(r.employee_id) ? 'processed' : r.status,
-                pay_period: pay_period // Ensure correct pay period
-              }));
-
-              currentPayrollRows = mappedAfterProcess;
-              renderPayrollRecords(currentPayrollRows);
-            }).fail(function(xhr, status, err) {
-              if (typeof Swal !== 'undefined') Swal.fire('Error', 'Failed to process payroll', 'error');
-              console.error('AJAX process_payroll failed', err, xhr && xhr.responseText);
-            }).always(function() {
-              if (typeof Swal !== 'undefined') Swal.close();
-              // Close modal and reset form after processing completes
-              $('#generatePayrollModal').modal('hide');
-              $('#generatePayrollForm')[0].reset();
-            });
-          } else {
-            // Close modal and reset form after generation (no processing)
+            loadPayrollData();
+            
             $('#generatePayrollModal').modal('hide');
-            $('#generatePayrollForm')[0].reset();
           }
-
         }).fail(function(xhr, status, err) {
           if (typeof Swal !== 'undefined') Swal.fire('Error', 'Failed to generate payroll', 'error');
-          console.error('AJAX get_payroll failed', err);
+          console.error('AJAX process_payroll failed', err, xhr && xhr.responseText);
         }).always(function() {
           if (typeof Swal !== 'undefined') Swal.close();
         });
@@ -743,19 +757,9 @@ ob_start();
           success: function(resp) {
             if (resp.success) {
                 const rows = resp.data || [];
-                // map rows into payroll record shape used by renderPayrollRecords
-                // Backend now provides properly formatted data, no need for complex mapping
-                const mapped = rows;
-                // If backend returned persisted rows, show them. Otherwise show generated preview rows (marked as preview).
-                if (resp.persisted === true) {
-                  currentPayrollRows = mapped;
-                  renderPayrollRecords(currentPayrollRows);
-                } else {
-                  // mark preview rows so UI can indicate they're not yet persisted
-                  const preview = mapped.map(r => ({ ...r, status: 'preview' }));
-                  currentPayrollRows = preview;
-                  renderPayrollRecords(currentPayrollRows);
-                }
+                // Backend provides properly formatted data from database
+                currentPayrollRows = rows;
+                renderPayrollRecords(currentPayrollRows);
             } else {
               console.error('Failed to load payroll:', resp.message);
               renderPayrollRecords([]);
@@ -781,7 +785,7 @@ ob_start();
     let html = '';
     items.forEach((record, index) => {
       const statusBadge = getPayrollStatusBadge(record.status);
-      const payPeriodFormatted = formatPayPeriod(record.pay_period);
+      const payPeriodFormatted = formatPayrollPeriod(record.period_start, record.period_end);
       
       html += `
         <tr>
@@ -869,6 +873,22 @@ ob_start();
     return `${monthNames[parseInt(month) - 1]} ${year}`;
   }
 
+  function formatPayrollPeriod(startDate, endDate) {
+    if (!startDate || !endDate) return 'N/A';
+    
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    // If same month, show "Oct 1-15, 2025"
+    if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
+      return `${monthNames[start.getMonth()]} ${start.getDate()}-${end.getDate()}, ${start.getFullYear()}`;
+    } else {
+      // If different months, show "Oct 16 - Nov 15, 2025"
+      return `${monthNames[start.getMonth()]} ${start.getDate()} - ${monthNames[end.getMonth()]} ${end.getDate()}, ${start.getFullYear()}`;
+    }
+  }
+
   function formatDate(dateStr) {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', { 
@@ -899,6 +919,29 @@ ob_start();
   function viewPayslip(id) {
   const record = currentPayrollRows.find(r => r.id === id);
     if (record && typeof Swal !== 'undefined') {
+      // Build attendance details section if available
+      let attendanceHtml = '';
+      if (record.attendance_details) {
+        const att = record.attendance_details;
+        attendanceHtml = `
+          <div class="col-12 mt-3">
+            <h6 class="text-primary">📅 Attendance Summary</h6>
+            <div class="row">
+              <div class="col-6">
+                <small><strong>Working Days:</strong> ${att.working_days || 'N/A'}</small><br>
+                <small><strong>Present Days:</strong> <span class="text-success">${att.present_days || 0}</span></small><br>
+                <small><strong>Absent Days:</strong> <span class="text-danger">${att.absent_days || 0}</span></small>
+              </div>
+              <div class="col-6">
+                <small><strong>Late Days:</strong> <span class="text-warning">${att.late_days || 0}</span></small><br>
+                <small><strong>Daily Rate:</strong> ₱${formatCurrency(att.daily_rate || 0)}</small><br>
+                <small><strong>Employment:</strong> ${(att.employment_type || 'monthly').toUpperCase()}</small>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      
       Swal.fire({
         title: 'Payslip Details',
         html: `
@@ -907,8 +950,9 @@ ob_start();
             <hr>
             <div class="row">
               <div class="col-6">
-                <p><strong>Pay Period:</strong> ${formatPayPeriod(record.pay_period)}</p>
-                <p><strong>Basic Salary:</strong> ₱${formatCurrency(record.basic_salary)}</p>
+                <p><strong>Pay Period:</strong> ${formatPayrollPeriod(record.period_start, record.period_end)}</p>
+                <p><strong>Monthly Basic:</strong> ₱${formatCurrency(record.basic_salary)}</p>
+                <p><strong>Earned Basic:</strong> ₱${formatCurrency(record.earned_salary || record.basic_salary)}</p>
                 <p><strong>Allowances:</strong> +₱${formatCurrency(record.allowances)}</p>
                 <p><strong>Deductions:</strong> -₱${formatCurrency(record.deductions)}</p>
               </div>
@@ -918,10 +962,11 @@ ob_start();
                 <hr>
                 <p><strong>Net Pay:</strong> <span class="text-success">₱${formatCurrency(record.net_pay)}</span></p>
               </div>
+              ${attendanceHtml}
             </div>
           </div>
         `,
-        width: 600
+        width: 700
       });
     }
   }

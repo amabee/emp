@@ -35,8 +35,9 @@ try {
 
     if ($cnt > 0) {
         // Fetch payroll rows with aggregated allowances/deductions
+        // Show employee monthly basic salary in basic_salary field for display purposes
     $sql = "SELECT p.payroll_id, p.employee_id, CONCAT(e.first_name, ' ', e.last_name) as employee_name, d.department_name, e.department_id as department_id,
-        p.period_start, p.period_end, p.basic_salary, p.pay_date,
+        p.period_start, p.period_end, e.basic_salary, p.basic_salary as earned_salary, p.pay_date,
         COALESCE((SELECT SUM(amount) FROM payroll_allowance pa WHERE pa.payroll_id = p.payroll_id),0) as allowances_total,
         COALESCE((SELECT SUM(amount) FROM payroll_deduction pd WHERE pd.payroll_id = p.payroll_id),0) as deductions_total,
         COALESCE((SELECT SUM(hours * rate) FROM overtime_records o WHERE o.employee_id = p.employee_id AND o.date BETWEEN p.period_start AND p.period_end AND o.approved_by IS NOT NULL),0) as overtime_total,
@@ -86,38 +87,10 @@ try {
             ];
         }
 
-        echo json_encode(['success' => true, 'data' => $out, 'persisted' => true]);
+        echo json_encode(['success' => true, 'data' => $out]);
     } else {
-        // Fallback to on-the-fly generation
-        $rows = $pc->generatePayroll($pay_period, $filters);
-        
-        // Map the generated rows to match frontend expectations
-        $mappedRows = [];
-        foreach ($rows as $r) {
-            $mappedRows[] = [
-                'id' => null, // No persisted ID yet
-                'payroll_id' => null,
-                'employee_id' => $r['employee_id'],
-                'employee' => $r['employee_name'],
-                'employee_name' => $r['employee_name'],
-                'department' => $r['department_name'],
-                'department_name' => $r['department_name'],
-                'pay_period' => $pay_period . '-01',
-                'period_start' => $pay_period . '-01',
-                'period_end' => date('Y-m-t', strtotime($pay_period . '-01')),
-                'basic_salary' => floatval($r['basic_salary']),
-                'allowances' => floatval($r['allowances_total']),
-                'allowances_total' => floatval($r['allowances_total']),
-                'deductions' => floatval($r['deductions_total']),
-                'deductions_total' => floatval($r['deductions_total']),
-                'gross_pay' => floatval($r['gross_pay']),
-                'net_pay' => floatval($r['net_pay']),
-                'status' => 'preview', // Mark as preview for generated data
-                'pay_date' => null // No payment date for preview data
-            ];
-        }
-        
-        echo json_encode(['success' => true, 'data' => $mappedRows, 'persisted' => false]);
+        // No fallback - only show persisted data
+        echo json_encode(['success' => true, 'data' => []]);
     }
 
 } catch (Exception $e) {
