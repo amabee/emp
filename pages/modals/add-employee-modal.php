@@ -96,6 +96,16 @@
               </div>
             </div>
           </div>
+
+          <!-- Work Schedule Info -->
+          <div class="row mb-3">
+            <div class="col-12">
+              <div class="alert alert-info">
+                <h6 class="mb-2">📅 Work Schedule</h6>
+                <p class="mb-0">Employee work schedule will be automatically created based on the company's working calendar. The system will assign standard working hours (8:00 AM - 5:00 PM) for all future working days.</p>
+              </div>
+            </div>
+          </div>
         </form>
       </div>
       <div class="modal-footer">
@@ -153,7 +163,8 @@
           if (response.success) {
             Swal.fire({
               title: 'Success!',
-              html: `Employee added successfully!<br><br>
+              html: `Employee added successfully!<br>
+                           Work schedule has been created for the next 90 days.<br><br>
                            <strong>Login Credentials:</strong><br>
                            Username: <code>${response.username}</code><br>
                            Password: <code>${response.password}</code><br><br>

@@ -117,6 +117,14 @@ try {
             }
         }
         
+        // Automatically create work schedule based on working calendar
+        try {
+            $controller->createAutomaticEmployeeSchedule($employeeId);
+        } catch (Exception $e) {
+            error_log("Failed to create automatic employee schedule: " . $e->getMessage());
+            // Don't fail the entire employee creation if schedule fails
+        }
+        
         // Log the action
         if (isset($_SESSION['user_id'])) {
             $employeeName = trim($data['first_name'] . ' ' . $data['last_name']);
