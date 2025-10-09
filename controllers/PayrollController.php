@@ -169,7 +169,6 @@ class PayrollController
             if (isset($dedMap[$eid])) {
                 foreach ($dedMap[$eid] as $d) {
                     if ($d['type'] === 'PERCENTAGE') {
-                        // percentage is applied to basic + allowances (not including overtime)
                         $baseForPercent = $basic + $allowTotal;
                         $dedTotal += ($d['amount'] / 100.0) * $baseForPercent;
                     } else {

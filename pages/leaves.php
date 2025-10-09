@@ -14,6 +14,12 @@ if (!isset($user_id)) {
   exit();
 }
 
+// Determine user capabilities
+$canApprove = canApproveLeaves();
+$canModify = canModify();
+$isEmployee = isEmployee();
+$isSupervisor = isSupervisor();
+
 ob_start();
 ?>
 
@@ -24,18 +30,40 @@ ob_start();
       <div class="d-flex align-items-start row">
         <div class="col-sm-7">
           <div class="card-body">
-            <h5 class="card-title text-primary mb-3">Leave Management 🏖️</h5>
-            <p class="mb-4">Manage employee leave requests, approvals, and leave balances. Track vacation days, sick leave, and other time-off requests.</p>
-            <button class="btn btn-sm btn-primary" id="addLeaveBtn" data-bs-toggle="modal" data-bs-target="#addLeaveModal">
-              <i class="bx bx-plus-circle me-1"></i>New Leave Request
-            </button>
-            <button class="btn btn-sm btn-outline-secondary ms-2" id="exportLeaveBtn">Export Report</button>
-            <button class="btn btn-sm btn-outline-info ms-2" id="leaveBalanceBtn" data-bs-toggle="modal" data-bs-target="#leaveBalanceModal">
-              <i class="bx bx-calendar-alt me-1"></i>Leave Balances
-            </button>
-            <button class="btn btn-sm btn-outline-secondary ms-2" id="leaveRuleHelp" data-bs-toggle="tooltip" title="Counting is inclusive of start/end dates. Balances and request validation use company working-calendar (holidays/weekends) when available.">
-              <i class="bx bx-help-circle me-1"></i>Counting Rules
-            </button>
+            <?php if ($isEmployee): ?>
+              <h5 class="card-title text-primary mb-3">My Leave Requests 🏖️</h5>
+              <p class="mb-4">Submit and track your leave requests. View your leave balances and request history.</p>
+            <?php elseif ($isSupervisor): ?>
+              <h5 class="card-title text-primary mb-3">Leave Approvals 👨‍💼</h5>
+              <p class="mb-4">Review and approve team leave requests. Monitor leave schedules and balances.</p>
+            <?php else: ?>
+              <h5 class="card-title text-primary mb-3">Leave Management 🏖️</h5>
+              <p class="mb-4">Manage employee leave requests, approvals, and leave balances. Track vacation days, sick leave, and other time-off requests.</p>
+            <?php endif; ?>
+            
+            <div class="d-flex flex-wrap gap-2">
+              <?php if ($isEmployee || $canModify): ?>
+                <button class="btn btn-sm btn-primary" id="addLeaveBtn" data-bs-toggle="modal" data-bs-target="#addLeaveModal">
+                  <i class="bx bx-plus-circle me-1"></i><?php echo $isEmployee ? 'New Leave Request' : 'Add Leave Request'; ?>
+                </button>
+              <?php endif; ?>
+              
+              <?php if ($canModify): ?>
+                <button class="btn btn-sm btn-outline-secondary" id="exportLeaveBtn">Export Report</button>
+              <?php endif; ?>
+              
+              <button class="btn btn-sm btn-outline-info" id="leaveBalanceBtn" data-bs-toggle="modal" data-bs-target="#leaveBalanceModal">
+                <i class="bx bx-calendar-alt me-1"></i><?php echo $isEmployee ? 'My Leave Balance' : 'Leave Balances'; ?>
+              </button>
+              
+              <button class="btn btn-sm btn-outline-secondary" id="leaveRuleHelp" data-bs-toggle="tooltip" title="Counting is inclusive of start/end dates. Balances and request validation use company working-calendar (holidays/weekends) when available.">
+                <i class="bx bx-help-circle me-1"></i>Counting Rules
+              </button>
+              
+              <?php if ($isSupervisor): ?>
+                <span class="badge bg-warning ms-2 align-self-center">Approval Authority</span>
+              <?php endif; ?>
+            </div>
           </div>
         </div>
         <div class="col-sm-5 text-center text-sm-left">

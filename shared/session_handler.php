@@ -34,4 +34,70 @@ if (!function_exists('requireUserAuth')) {
         }
     }
 }
+
+// Role-based access control functions
+if (!function_exists('hasRole')) {
+    function hasRole($requiredRoles) {
+        if (!checkAuth()) {
+            return false;
+        }
+        
+        $userRole = $_SESSION['user_type'] ?? '';
+        
+        if (is_string($requiredRoles)) {
+            return $userRole === $requiredRoles;
+        }
+        
+        if (is_array($requiredRoles)) {
+            return in_array($userRole, $requiredRoles);
+        }
+        
+        return false;
+    }
+}
+
+if (!function_exists('requireRole')) {
+    function requireRole($requiredRoles) {
+        if (!hasRole($requiredRoles)) {
+            header('Location: ../dashboard.php');
+            exit();
+        }
+    }
+}
+
+if (!function_exists('canModify')) {
+    function canModify() {
+        return hasRole(['admin', 'hr']);
+    }
+}
+
+if (!function_exists('canView')) {
+    function canView() {
+        return hasRole(['admin', 'hr', 'supervisor']);
+    }
+}
+
+if (!function_exists('canApproveLeaves')) {
+    function canApproveLeaves() {
+        return hasRole(['admin', 'hr', 'supervisor']);
+    }
+}
+
+if (!function_exists('isEmployee')) {
+    function isEmployee() {
+        return hasRole('employee');
+    }
+}
+
+if (!function_exists('isSupervisor')) {
+    function isSupervisor() {
+        return hasRole('supervisor');
+    }
+}
+
+if (!function_exists('isAdminOrHR')) {
+    function isAdminOrHR() {
+        return hasRole(['admin', 'hr']);
+    }
+}
 ?>

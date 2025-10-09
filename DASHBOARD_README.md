@@ -126,3 +126,34 @@ If an employee works on Saturday or Sunday (day-off), the **entire work duration
 - Weekend work is detected and processed as full overtime
 - All overtime calculations are stored in the `overtime_records` table
 - Pay period is based on 13 working days (excluding weekends) per semi-monthly period
+
+
+### Sample Calculation of payroll
+=== Christopher Porter (ID: 12) - Payroll Calculation Demo ===
+
+Employee: Christopher Porter
+Monthly Basic Salary: ₱14,000.00
+
+=== Attendance Details ===
+Working Days in Period: 23
+Present Days: 2
+Absent Days: 21
+Late Days: 0
+Attendance Ratio: 8.7%
+Expected Salary for Period: ₱14,636.36
+Daily Rate: ₱636.36
+
+=== Payroll Calculation ===
+Attendance-Adjusted Basic: ₱1,272.73
+Allowances Total: ₱553.00
+Overtime Total: ₱0.00
+Gross Pay: ₱1,825.73
+
+=== Deductions Breakdown ===
+Total Deductions: ₱1,134.12
+- r00tk1t: ₱54.00 (Fixed)
+- SSS: ₱788.00 (Fixed)
+- Taxes: ₱292.12 (16.00% of ₱1,825.73)
+
+=== Final Result ===
+Net Pay: ₱691.61

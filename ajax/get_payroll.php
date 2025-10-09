@@ -26,11 +26,18 @@ try {
 
     // If there are persisted payroll rows for the requested period, return them instead of generating on-the-fly
     $db = getDBConnection();
-    $periodStart = (new DateTime($pay_period . '-01'))->format('Y-m-d');
-
-    // Check for persisted payroll rows
-    $check = $db->prepare("SELECT COUNT(*) as cnt FROM payroll WHERE period_start = ?");
-    $check->execute([$periodStart]);
+    
+    // Check for any persisted payroll rows (show all periods if pay_period is current month, otherwise filter by period)
+    if ($pay_period === date('Y-m')) {
+        // Show all payroll records for current month view
+        $check = $db->prepare("SELECT COUNT(*) as cnt FROM payroll");
+        $check->execute();
+    } else {
+        // Filter by specific period for historical views
+        $periodStart = (new DateTime($pay_period . '-01'))->format('Y-m-d');
+        $check = $db->prepare("SELECT COUNT(*) as cnt FROM payroll WHERE period_start = ?");
+        $check->execute([$periodStart]);
+    }
     $cnt = intval($check->fetchColumn());
 
     if ($cnt > 0) {
@@ -45,11 +52,19 @@ try {
         p.net_pay, p.processed_by, p.processed_at
         FROM payroll p
         LEFT JOIN employees e ON p.employee_id = e.employee_id
-        LEFT JOIN department d ON e.department_id = d.department_id
-        WHERE p.period_start = ?";
+        LEFT JOIN department d ON e.department_id = d.department_id";
 
-        $stmt = $db->prepare($sql);
-        $stmt->execute([$periodStart]);
+        // Add WHERE clause based on whether we're showing all records or filtering by period
+        if ($pay_period === date('Y-m')) {
+            $sql .= " ORDER BY p.payroll_id DESC";
+            $stmt = $db->prepare($sql);
+            $stmt->execute();
+        } else {
+            $periodStart = (new DateTime($pay_period . '-01'))->format('Y-m-d');
+            $sql .= " WHERE p.period_start = ? ORDER BY p.payroll_id DESC";
+            $stmt = $db->prepare($sql);
+            $stmt->execute([$periodStart]);
+        }
         $persisted = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Apply filters (department / specific employees) if provided
@@ -82,8 +97,8 @@ try {
                 'deductions_total' => floatval($r['deductions_total']),
                 'gross_pay' => floatval($r['gross_pay']),
                 'net_pay' => floatval($r['net_pay']),
-                'status' => $r['pay_date'] ? 'paid' : 'processed', // Use pay_date to determine if actually paid
-                'pay_date' => $r['pay_date'] // Use the actual pay_date column
+                'status' => $r['pay_date'] ? 'paid' : 'processed',
+                'pay_date' => $r['pay_date']
             ];
         }
 

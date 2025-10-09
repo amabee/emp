@@ -11,15 +11,39 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 }
 
 try {
-    $month = $_GET['month'] ?? date('n');
-    $year = $_GET['year'] ?? date('Y');
-    
-    if (!is_numeric($month) || !is_numeric($year)) {
-        throw new Exception('Invalid month or year');
-    }
-    
     $controller = new WorkingCalendarController();
-    $result = $controller->getWorkingCalendar($month, $year);
+    
+    // Handle different request types
+    $type = $_GET['type'] ?? 'calendar';
+    
+    switch ($type) {
+        case 'today_status':
+            $date = $_GET['date'] ?? date('Y-m-d');
+            $result = $controller->getTodayWorkStatus($date);
+            break;
+            
+        case 'upcoming_holidays':
+            $limit = (int)($_GET['limit'] ?? 5);
+            $result = $controller->getUpcomingHolidays($limit);
+            break;
+            
+        case 'week_schedule':
+            $startDate = $_GET['start_date'] ?? date('Y-m-d');
+            $result = $controller->getWeekSchedule($startDate);
+            break;
+            
+        case 'calendar':
+        default:
+            $month = $_GET['month'] ?? date('n');
+            $year = $_GET['year'] ?? date('Y');
+            
+            if (!is_numeric($month) || !is_numeric($year)) {
+                throw new Exception('Invalid month or year');
+            }
+            
+            $result = $controller->getWorkingCalendar($month, $year);
+            break;
+    }
     
     echo json_encode($result);
     

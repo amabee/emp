@@ -14,6 +14,13 @@ if (!isset($user_id)) {
   exit();
 }
 
+// Check role permissions
+requireRole(['admin', 'hr', 'supervisor']);
+
+// Determine if user can modify (only admin and hr)
+$canModify = canModify();
+$viewOnly = isSupervisor();
+
 ob_start();
 ?>
 
@@ -26,11 +33,22 @@ ob_start();
           <div class="card-body">
             <h5 class="card-title text-primary mb-3">Employee Management System 👥</h5>
             <p class="mb-4">
-              Manage employee information, departments, and employment details from this centralized dashboard.
+              <?php if ($viewOnly): ?>
+                View employee information and details from this dashboard. 
+                <span class="badge bg-info">View Only Access</span>
+              <?php else: ?>
+                Manage employee information, departments, and employment details from this centralized dashboard.
+              <?php endif; ?>
             </p>
-            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
-              <i class="bx bx-plus-circle me-1"></i>Add New Employee
-            </button>
+            <?php if ($canModify): ?>
+              <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
+                <i class="bx bx-plus-circle me-1"></i>Add New Employee
+              </button>
+            <?php else: ?>
+              <button class="btn btn-sm btn-outline-info" disabled>
+                <i class="bx bx-info-circle me-1"></i>View Only Mode
+              </button>
+            <?php endif; ?>
           </div>
         </div>
         <div class="col-sm-5 text-center text-sm-left">
