@@ -31,11 +31,15 @@ try {
         exit();
     }
     
-    require_once __DIR__ . '/../controllers/PerformanceController.php';
-    $controller = new PerformanceController();
+    // Delete performance evaluation directly
+    $stmt = $db->prepare("DELETE FROM performance WHERE performance_id = ?");
+    $result = $stmt->execute([$_POST['performance_id']]);
     
-    $result = $controller->deletePerformance($_POST['performance_id']);
-    echo json_encode($result);
+    if ($result) {
+        echo json_encode(['success' => true, 'message' => 'Performance evaluation deleted successfully']);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Failed to delete performance evaluation']);
+    }
     
 } catch (Exception $e) {
     echo json_encode([

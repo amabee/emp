@@ -119,7 +119,7 @@ if (isset($page_aliases[$current_page])) {
       </li>
     <?php endif; ?>
 
-    <?php if (in_array($user_type, ['admin', 'hr', 'supervisor'])): ?>
+    <?php if (in_array($user_type, ['admin', 'hr'])): ?>
       <!-- Admin + HR Section -->
       <li class="menu-header small text-uppercase">
         <span class="menu-header-text">HR Management</span>
@@ -154,21 +154,31 @@ if (isset($page_aliases[$current_page])) {
           <div data-i18n="Allowances">Allowances</div>
         </a>
       </li>
-      <?php if ($user_type === 'supervisor'): ?>
-        <li class="menu-item <?php echo isMenuActive('performance', $current_page); ?>">
-          <a href="./performance.php" class="menu-link">
-            <i class="menu-icon tf-icons bx bx-bar-chart"></i>
-            <div data-i18n="Performance">Performance Evaluations</div>
-          </a>
-        </li>
-      <?php else: ?>
-        <li class="menu-item <?php echo isMenuActive('performance', $current_page); ?>">
-          <a href="./performance.php" class="menu-link">
-            <i class="menu-icon tf-icons bx bx-bar-chart"></i>
-            <div data-i18n="Performance">Performance Reports (View Only)</div>
-          </a>
-        </li>
-      <?php endif; ?>
+      <li class="menu-item <?php echo isMenuActive('performance', $current_page); ?>">
+        <a href="./performance.php" class="menu-link">
+          <i class="menu-icon tf-icons bx bx-bar-chart"></i>
+          <div data-i18n="Performance">Performance Reports (View Only)</div>
+        </a>
+      </li>
+    <?php endif; ?>
+
+    <?php if ($user_type === 'supervisor'): ?>
+      <!-- Supervisor Section -->
+      <li class="menu-header small text-uppercase">
+        <span class="menu-header-text">Team Management</span>
+      </li>
+      <li class="menu-item <?php echo isMenuActive('employee-management', $current_page); ?>">
+        <a href="./employee-management.php" class="menu-link">
+          <i class="menu-icon tf-icons bx bx-group"></i>
+          <div data-i18n="Employees">View Team Members</div>
+        </a>
+      </li>
+      <li class="menu-item <?php echo isMenuActive('performance', $current_page); ?>">
+        <a href="./performance.php" class="menu-link">
+          <i class="menu-icon tf-icons bx bx-bar-chart"></i>
+          <div data-i18n="Performance">Performance Evaluations</div>
+        </a>
+      </li>
     <?php endif; ?>
 
     <?php if (in_array($user_type, ['admin', 'supervisor', 'hr'])): ?>
@@ -176,15 +186,6 @@ if (isset($page_aliases[$current_page])) {
       <li class="menu-header small text-uppercase">
         <span class="menu-header-text">Monitoring</span>
       </li>
-      
-      <?php if ($user_type === 'supervisor'): ?>
-        <li class="menu-item <?php echo isMenuActive('employee-management', $current_page); ?>">
-          <a href="./employee-management.php" class="menu-link">
-            <i class="menu-icon tf-icons bx bx-group"></i>
-            <div data-i18n="Employees">View Employees</div>
-          </a>
-        </li>
-      <?php endif; ?>
       
       <li class="menu-item <?php echo isMenuActive('attendance', $current_page); ?>">
         <a href="./attendance.php" class="menu-link">

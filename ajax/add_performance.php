@@ -16,7 +16,7 @@ if (!isSupervisor()) {
 
 try {
     // Validate required fields
-    $required_fields = ['employee_id', 'evaluator_id', 'period_year', 'quality_rating', 'productivity_rating', 'teamwork_rating', 'communication_rating', 'attendance_rating'];
+    $required_fields = ['employee_id', 'period_start', 'period_end', 'rating'];
     
     foreach ($required_fields as $field) {
         if (empty($_POST[$field])) {
@@ -25,14 +25,17 @@ try {
         }
     }
     
-    // Validate rating values (1-5)
-    $rating_fields = ['quality_rating', 'productivity_rating', 'teamwork_rating', 'communication_rating', 'attendance_rating'];
-    foreach ($rating_fields as $field) {
-        $rating = intval($_POST[$field]);
-        if ($rating < 1 || $rating > 5) {
-            echo json_encode(['success' => false, 'message' => "Rating for $field must be between 1 and 5"]);
-            exit();
-        }
+    // Validate rating value (1-5)
+    $rating = intval($_POST['rating']);
+    if ($rating < 1 || $rating > 5) {
+        echo json_encode(['success' => false, 'message' => "Rating must be between 1 and 5"]);
+        exit();
+    }
+    
+    // Validate dates
+    if (strtotime($_POST['period_start']) >= strtotime($_POST['period_end'])) {
+        echo json_encode(['success' => false, 'message' => "Period start date must be before end date"]);
+        exit();
     }
     
     // Check if employee exists
@@ -44,41 +47,34 @@ try {
         exit();
     }
     
-    // Check if evaluator exists
-    $stmt = $db->prepare("SELECT employee_id FROM employees WHERE employee_id = ?");
-    $stmt->execute([$_POST['evaluator_id']]);
-    if (!$stmt->fetch()) {
-        echo json_encode(['success' => false, 'message' => 'Evaluator not found']);
-        exit();
-    }
-    
     // Check if performance evaluation already exists for this employee and period
-    $stmt = $db->prepare("SELECT performance_id FROM performance WHERE employee_id = ? AND period_year = ?");
-    $stmt->execute([$_POST['employee_id'], $_POST['period_year']]);
+    $stmt = $db->prepare("SELECT performance_id FROM performance WHERE employee_id = ? AND period_start = ? AND period_end = ?");
+    $stmt->execute([$_POST['employee_id'], $_POST['period_start'], $_POST['period_end']]);
     if ($stmt->fetch()) {
         echo json_encode(['success' => false, 'message' => 'Performance evaluation already exists for this employee and period']);
         exit();
     }
     
-    require_once __DIR__ . '/../controllers/PerformanceController.php';
-    $controller = new PerformanceController();
+    // Get current user as evaluator
+    $evaluator_id = $_SESSION['user_id'];
     
-    $performance_data = [
-        'employee_id' => $_POST['employee_id'],
-        'evaluator_id' => $_POST['evaluator_id'],
-        'period_year' => $_POST['period_year'],
-        'quality_rating' => $_POST['quality_rating'],
-        'productivity_rating' => $_POST['productivity_rating'],
-        'teamwork_rating' => $_POST['teamwork_rating'],
-        'communication_rating' => $_POST['communication_rating'],
-        'attendance_rating' => $_POST['attendance_rating'],
-        'comments' => $_POST['comments'] ?? '',
-        'goals' => $_POST['goals'] ?? '',
-        'achievements' => $_POST['achievements'] ?? ''
-    ];
+    // Insert performance evaluation directly
+    $stmt = $db->prepare("INSERT INTO performance (employee_id, period_start, period_end, rating, remarks, evaluated_by) VALUES (?, ?, ?, ?, ?, ?)");
+    $result = $stmt->execute([
+        $_POST['employee_id'],
+        $_POST['period_start'],
+        $_POST['period_end'],
+        $_POST['rating'],
+        $_POST['remarks'] ?? '',
+        $evaluator_id
+    ]);
     
-    $result = $controller->createPerformance($performance_data);
-    echo json_encode($result);
+    if ($result) {
+        echo json_encode(['success' => true, 'message' => 'Performance evaluation created successfully']);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Failed to create performance evaluation']);
+    }
+
     
 } catch (Exception $e) {
     echo json_encode([

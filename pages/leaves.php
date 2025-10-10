@@ -68,7 +68,7 @@ ob_start();
         </div>
         <div class="col-sm-5 text-center text-sm-left">
           <div class="card-body pb-0 px-0 px-md-4">
-            <img src="../assets/img/illustrations/leave-management.png" height="140" alt="Leave Management" style="max-width: 100%;">
+            <img src="../assets/img/illustrations/leave.png" height="140" alt="Leave Management" style="max-width: 100%;">
           </div>
         </div>
       </div>

@@ -63,7 +63,7 @@ ob_start();
         </div>
         <div class="col-sm-5 text-center text-sm-left">
           <div class="card-body pb-0 px-0 px-md-4">
-            <img src="../assets/img/illustrations/performance.png" height="140" alt="Performance" data-app-dark-img="illustrations/performance-dark.png" data-app-light-img="illustrations/performance.png" style="max-width: 100%;">
+            <img src="../assets/img/illustrations/performance.png" height="200" alt="Performance" data-app-dark-img="illustrations/performance-dark.png" data-app-light-img="illustrations/performance.png" style="max-width: 100%;">
           </div>
         </div>
       </div>
@@ -439,7 +439,7 @@ $(document).ready(function() {
       dataType: 'json',
       success: function(response) {
         if (response.success) {
-          updateStatisticsCards(response.data);
+          updateStatisticsCards(response);
         } else {
           console.error('Error loading statistics:', response.message);
         }
@@ -460,8 +460,8 @@ $(document).ready(function() {
         success: function(response) {
           if (response.success) {
             $('#filterEmployee, #employee_id').empty().append('<option value="">Select Employee</option>');
-            response.data.forEach(function(employee) {
-              const option = `<option value="${employee.employee_id}">${employee.first_name} ${employee.last_name}</option>`;
+            response.employees.forEach(function(employee) {
+              const option = `<option value="${employee.id}">${employee.name}</option>`;
               $('#filterEmployee, #employee_id').append(option);
             });
           }
@@ -744,7 +744,11 @@ $(document).ready(function() {
       position: 'top-end',
       showConfirmButton: false,
       timer: 3000,
-      timerProgressBar: true
+      timerProgressBar: true,
+      didOpen: () => {
+        const container = Swal.getContainer();
+        if (container) container.style.zIndex = '9999';
+      }
     });
 
     Toast.fire({
