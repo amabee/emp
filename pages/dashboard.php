@@ -1,12 +1,28 @@
 <?php
-$page_title = 'Admin Dashboard';
-$additional_css = [
-  '../assets/vendor/libs/apex-charts/apex-charts.css'
+// Set page title based on user type
+$page_title_map = [
+  'admin' => 'Admin Dashboard',
+  'supervisor' => 'Supervisor Dashboard', 
+  'hr' => 'HR Dashboard',
+  'employee' => 'Employee Dashboard'
 ];
-$additional_js = [
-  '../assets/vendor/libs/apex-charts/apexcharts.js',
-  '../assets/js/dashboards-analytics.js'
-];
+
+$page_title = $page_title_map[$_SESSION['user_type']] ?? 'Dashboard';
+
+// Different CSS/JS for different user types
+if (in_array($_SESSION['user_type'], ['admin', 'supervisor', 'hr'])) {
+  $additional_css = [
+    '../assets/vendor/libs/apex-charts/apex-charts.css'
+  ];
+  $additional_js = [
+    '../assets/vendor/libs/apex-charts/apexcharts.js',
+    '../assets/js/dashboards-analytics.js'
+  ];
+} else {
+  // Employee gets simpler dashboard
+  $additional_css = [];
+  $additional_js = [];
+}
 
 include './shared/session_handler.php';
 
@@ -15,10 +31,16 @@ if (!isset($user_id)) {
   exit();
 }
 
-// THIS IS THE OUTPUT BUFFER START FOR RENDERING DASHBOARD CONTENT
-// IF EVER YOU GET CONFUSED ON WHAT THIS DOES, IT CAPTURES ALL THE HTML BELOW UNTIL THE ob_get_clean() FUNCTION AND STORES IT IN $content VARIABLE
-// WHICH IS THEN PASSED TO layout.php TO BE RENDERED INSIDE THE LAYOUT
-// ANYWAYS I WILL BE INCLUDING A README DOCU ABOUT THIS SO BETTER READ IT :))
+// Route to different dashboard views based on user type
+if ($_SESSION['user_type'] === 'employee') {
+  include 'dashboard_employee.php';
+  exit();
+} elseif ($_SESSION['user_type'] === 'supervisor') {
+  include 'dashboard_supervisor.php';
+  exit();
+}
+
+// Continue with admin/HR dashboard for admin and hr users
 ob_start();
 ?>
 

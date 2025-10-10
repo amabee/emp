@@ -84,7 +84,7 @@ if (isset($page_aliases[$current_page])) {
   <div class="menu-inner-shadow"></div>
 
   <ul class="menu-inner py-1">
-    <!-- Dashboards -->
+    <!-- Dashboard - All users -->
     <li class="menu-item <?php echo isMenuActive('dashboard', $current_page); ?>">
       <a href="./dashboard.php" class="menu-link">
         <i class="menu-icon tf-icons bx bx-home-circle"></i>
@@ -93,106 +93,51 @@ if (isset($page_aliases[$current_page])) {
     </li>
 
     <?php if ($user_type === 'admin'): ?>
-      <!-- Admin section -->
+      <!-- Admin Only Section -->
       <li class="menu-header small text-uppercase">
         <span class="menu-header-text">Administration</span>
       </li>
       <li class="menu-item <?php echo isMenuActive('user-management', $current_page); ?>">
         <a href="./user-management.php" class="menu-link">
-          <i class="menu-icon tf-icons bx bx-user"></i>
+          <i class="menu-icon tf-icons bx bx-user-cog"></i>
           <div data-i18n="Users">User Management</div>
         </a>
       </li>
       <li class="menu-item <?php echo isMenuActive('system-settings', $current_page); ?>">
         <a href="./system-settings.php" class="menu-link">
           <i class="menu-icon tf-icons bx bx-cog"></i>
-          <div data-i18n="Users">System Settings</div>
+          <div data-i18n="Settings">System Settings</div>
         </a>
       </li>
       <li class="menu-item <?php echo isMenuActive('system-logs', $current_page); ?>">
         <a href="./system-logs.php" class="menu-link">
           <i class="menu-icon tf-icons bx bx-list-ul"></i>
-          <div data-i18n="Users">System Logs</div>
+          <div data-i18n="Logs">System Logs</div>
         </a>
       </li>
     <?php endif; ?>
 
-    <?php if ($user_type === 'admin' || $user_type === 'supervisor' || $user_type === 'hr' ): ?>
-      <!-- Admin section -->
+    <?php if (in_array($user_type, ['admin', 'hr'])): ?>
+      <!-- Admin + HR Section -->
       <li class="menu-header small text-uppercase">
-        <span class="menu-header-text">Management</span>
+        <span class="menu-header-text">HR Management</span>
       </li>
       <li class="menu-item <?php echo isMenuActive('employee-management', $current_page); ?>">
         <a href="./employee-management.php" class="menu-link">
-          <i class="menu-icon tf-icons bx bx-user"></i>
-          <div data-i18n="Users">Employee Management</div>
+          <i class="menu-icon tf-icons bx bx-group"></i>
+          <div data-i18n="Employees">Employee Management</div>
         </a>
       </li>
       <li class="menu-item <?php echo isMenuActive('organization-settings', $current_page); ?>">
         <a href="./organization-settings.php" class="menu-link">
-          <i class="menu-icon tf-icons bx bx-user"></i>
-          <div data-i18n="Users">Organizational Settings</div>
+          <i class="menu-icon tf-icons bx bx-buildings"></i>
+          <div data-i18n="Organization">Organization Settings</div>
         </a>
       </li>
-
-      <li class="menu-header small text-uppercase">
-        <span class="menu-header-text">Attendance & Leave</span>
-      </li>
-      <li class="menu-item <?php echo isMenuActive('attendance', $current_page); ?>">
-        <a href="./attendance.php" class="menu-link">
-          <i class="menu-icon tf-icons bx bx-calendar"></i>
-          <div data-i18n="Attendance">Attendance</div>
-        </a>
-      </li>
-     
-      <li class="menu-item <?php echo isMenuActive('working-calendar', $current_page); ?>">
-        <a href="./working-days-calendar.php" class="menu-link">
-          <i class="menu-icon tf-icons bx bx-calendar-event"></i>
-          <div data-i18n="Working Calendar">Working Calendar</div>
-        </a>
-      </li>
-
-    <?php endif; ?>
-
-
-     <li class="menu-item <?php echo isMenuActive('leaves', $current_page); ?>">
-        <a href="./leaves.php" class="menu-link">
-          <i class="menu-icon tf-icons bx bx-time-five"></i>
-            <div data-i18n="Leaves">Leave <?php echo ($user_type === 'employee' || $user_type === 'supervisor') ? 'Requests' : 'Management'; ?></div>
-        </a>
-      </li>
-
-    <?php if ($user_type === 'employee'): ?>
-      <li class="menu-header small text-uppercase">
-        <span class="menu-header-text">Calendar And DTR</span>
-      </li>
-      <li class="menu-item <?php echo isMenuActive('working-calendar', $current_page); ?>">
-        <a href="./working-days-calendar.php" class="menu-link">
-          <i class="menu-icon tf-icons bx bx-calendar-event"></i>
-          <div data-i18n="Working Calendar">Working Calendar</div>
-        </a>
-      </li>
-    <?php endif; ?>
-
-    <?php if ($user_type === 'admin' || $user_type === 'employee' || $user_type === 'supervisor' || $user_type === 'hr'): ?>
-      <li class="menu-item <?php echo isMenuActive('dtr', $current_page); ?>">
-        <a href="./dtr.php" class="menu-link">
-          <i class="menu-icon tf-icons bx bx-money"></i>
-          <div data-i18n="dtr">DTR</div>
-        </a>
-      </li>
-    <?php endif; ?>
-
-    <?php if ($user_type === 'admin' || $user_type === 'supervisor' || $user_type === 'hr'): ?>
-      <!-- Apps & Pages -->
-      <li class="menu-header small text-uppercase">
-        <span class="menu-header-text">Payroll Management</span>
-      </li>
-
-      <li class="menu-item <?php echo isMenuActive('payroll', $current_page); ?>">
+      <li class="menu-item <?php echo isMenuActive(['payroll'], $current_page); ?>">
         <a href="./payroll.php" class="menu-link">
           <i class="menu-icon tf-icons bx bx-money"></i>
-          <div data-i18n="Payroll">Payroll</div>
+          <div data-i18n="Payroll">Payroll Management</div>
         </a>
       </li>
       <li class="menu-item <?php echo isMenuActive('deductions', $current_page); ?>">
@@ -207,23 +152,76 @@ if (isset($page_aliases[$current_page])) {
           <div data-i18n="Allowances">Allowances</div>
         </a>
       </li>
-    <?php endif ?>
+    <?php endif; ?>
 
-    <!-- Settings -->
+    <?php if (in_array($user_type, ['admin', 'supervisor', 'hr'])): ?>
+      <!-- Admin + HR + Supervisor Section -->
+      <li class="menu-header small text-uppercase">
+        <span class="menu-header-text">Monitoring <?php echo $user_type === 'supervisor' ? '(View Only)' : ''; ?></span>
+      </li>
+      
+      <?php if ($user_type === 'supervisor'): ?>
+        <li class="menu-item <?php echo isMenuActive('employee-management', $current_page); ?>">
+          <a href="./employee-management.php" class="menu-link">
+            <i class="menu-icon tf-icons bx bx-group"></i>
+            <div data-i18n="Employees">View Employees</div>
+          </a>
+        </li>
+      <?php endif; ?>
+      
+      <li class="menu-item <?php echo isMenuActive('attendance', $current_page); ?>">
+        <a href="./attendance.php" class="menu-link">
+          <i class="menu-icon tf-icons bx bx-calendar-check"></i>
+          <div data-i18n="Attendance">Attendance <?php echo $user_type === 'supervisor' ? '(View)' : ''; ?></div>
+        </a>
+      </li>
+      <li class="menu-item <?php echo isMenuActive('working-days-calendar', $current_page); ?>">
+        <a href="./working-days-calendar.php" class="menu-link">
+          <i class="menu-icon tf-icons bx bx-calendar-event"></i>
+          <div data-i18n="Calendar">Working Calendar</div>
+        </a>
+      </li>
+    <?php endif; ?>
+
+    <!-- Leave Management - All users -->
     <li class="menu-header small text-uppercase">
-      <span class="menu-header-text">Settings</span>
+      <span class="menu-header-text"><?php echo $user_type === 'employee' ? 'My Requests' : 'Leave Management'; ?></span>
     </li>
-
-    <li class="menu-item <?php echo isMenuActive('profile', $current_page); ?>">
-      <a href="./profile.php" class="menu-link">
-        <i class="menu-icon tf-icons bx bx-user-circle"></i>
-        <div data-i18n="Profile">Profile</div>
+    <li class="menu-item <?php echo isMenuActive('leaves', $current_page); ?>">
+      <a href="./leaves.php" class="menu-link">
+        <i class="menu-icon tf-icons bx bx-calendar-x"></i>
+        <div data-i18n="Leaves">
+          <?php 
+            if ($user_type === 'employee') echo 'My Leave Requests';
+            elseif ($user_type === 'supervisor') echo 'Leave Approvals';
+            else echo 'Leave Management';
+          ?>
+        </div>
       </a>
     </li>
 
+    <!-- Personal Section - All users -->
+    <li class="menu-header small text-uppercase">
+      <span class="menu-header-text">Personal</span>
+    </li>
+    <li class="menu-item <?php echo isMenuActive('dtr', $current_page); ?>">
+      <a href="./dtr.php" class="menu-link">
+        <i class="menu-icon tf-icons bx bx-time"></i>
+        <div data-i18n="DTR">Time Tracking (DTR)</div>
+      </a>
+    </li>
+    <li class="menu-item <?php echo isMenuActive('profile', $current_page); ?>">
+      <a href="./profile.php" class="menu-link">
+        <i class="menu-icon tf-icons bx bx-user-circle"></i>
+        <div data-i18n="Profile">My Profile</div>
+      </a>
+    </li>
+
+    <!-- Logout -->
+    <li class="menu-divider mt-3"></li>
     <li class="menu-item <?php echo isMenuActive('logout', $current_page); ?>">
       <a href="../logout.php" class="menu-link">
-        <i class="menu-icon tf-icons bx bx-power-off"></i>
+        <i class="menu-icon tf-icons bx bx-power-off text-danger"></i>
         <div data-i18n="Logout">Logout</div>
       </a>
     </li>

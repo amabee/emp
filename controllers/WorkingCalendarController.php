@@ -501,5 +501,209 @@ class WorkingCalendarController {
             ];
         }
     }
+    
+    /**
+     * Get today's work status for employee dashboard
+     */
+    public function getTodayWorkStatus() {
+        try {
+            $today = date('Y-m-d');
+            
+            $stmt = $this->pdo->prepare("
+                SELECT 
+                    work_date,
+                    day_of_week,
+                    is_working,
+                    is_holiday,
+                    is_half_day,
+                    holiday_name,
+                    remarks
+                FROM working_calendar 
+                WHERE work_date = ?
+            ");
+            $stmt->execute([$today]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($result) {
+                // Determine status
+                if ($result['is_holiday']) {
+                    $status = 'Holiday';
+                    $description = $result['holiday_name'] ?: 'Holiday';
+                } elseif ($result['is_working']) {
+                    $status = $result['is_half_day'] ? 'Half Day' : 'Working Day';
+                    $description = $result['is_half_day'] ? 'Half Working Day' : 'Regular Working Day';
+                } else {
+                    $status = 'Non-Working Day';
+                    $description = 'Rest Day';
+                }
+                
+                return [
+                    'success' => true,
+                    'data' => [
+                        'date' => $result['work_date'],
+                        'day' => $result['day_of_week'],
+                        'status' => $status,
+                        'description' => $description,
+                        'remarks' => $result['remarks']
+                    ]
+                ];
+            } else {
+                // Default to working day if not defined
+                return [
+                    'success' => true,
+                    'data' => [
+                        'date' => $today,
+                        'day' => date('l'),
+                        'status' => 'Working Day',
+                        'description' => 'Regular Working Day',
+                        'remarks' => 'Not defined in calendar'
+                    ]
+                ];
+            }
+            
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Error getting today\'s work status: ' . $e->getMessage()
+            ];
+        }
+    }
+    
+    /**
+     * Get upcoming holidays for employee dashboard
+     */
+    public function getUpcomingHolidays($limit = 5) {
+        try {
+            $today = date('Y-m-d');
+            
+            $stmt = $this->pdo->prepare("
+                SELECT 
+                    work_date,
+                    day_of_week,
+                    holiday_name,
+                    remarks
+                FROM working_calendar 
+                WHERE work_date >= ? AND is_holiday = 1
+                ORDER BY work_date ASC
+                LIMIT ?
+            ");
+            $stmt->execute([$today, $limit]);
+            $holidays = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Format the results
+            $formattedHolidays = [];
+            foreach ($holidays as $holiday) {
+                $formattedHolidays[] = [
+                    'date' => $holiday['work_date'],
+                    'day' => $holiday['day_of_week'],
+                    'name' => $holiday['holiday_name'] ?: 'Holiday',
+                    'remarks' => $holiday['remarks'],
+                    'formatted_date' => date('M j, Y', strtotime($holiday['work_date']))
+                ];
+            }
+            
+            return [
+                'success' => true,
+                'data' => $formattedHolidays
+            ];
+            
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Error getting upcoming holidays: ' . $e->getMessage()
+            ];
+        }
+    }
+    
+    /**
+     * Get current week's schedule for employee dashboard
+     */
+    public function getWeekSchedule() {
+        try {
+            // Get current week dates (Monday to Sunday)
+            $monday = date('Y-m-d', strtotime('monday this week'));
+            $sunday = date('Y-m-d', strtotime('sunday this week'));
+            
+            $stmt = $this->pdo->prepare("
+                SELECT 
+                    work_date,
+                    day_of_week,
+                    is_working,
+                    is_holiday,
+                    is_half_day,
+                    holiday_name,
+                    remarks
+                FROM working_calendar 
+                WHERE work_date BETWEEN ? AND ?
+                ORDER BY work_date ASC
+            ");
+            $stmt->execute([$monday, $sunday]);
+            $weekData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Create full week array with all 7 days
+            $weekSchedule = [];
+            $currentDate = $monday;
+            
+            for ($i = 0; $i < 7; $i++) {
+                $dateStr = date('Y-m-d', strtotime($currentDate . " +$i days"));
+                $dayName = date('l', strtotime($dateStr));
+                
+                // Find data for this date
+                $dayData = null;
+                foreach ($weekData as $data) {
+                    if ($data['work_date'] === $dateStr) {
+                        $dayData = $data;
+                        break;
+                    }
+                }
+                
+                if ($dayData) {
+                    // Determine status
+                    if ($dayData['is_holiday']) {
+                        $status = 'Holiday';
+                        $description = $dayData['holiday_name'] ?: 'Holiday';
+                    } elseif ($dayData['is_working']) {
+                        $status = $dayData['is_half_day'] ? 'Half Day' : 'Working';
+                        $description = $dayData['is_half_day'] ? 'Half Working Day' : 'Working Day';
+                    } else {
+                        $status = 'Rest';
+                        $description = 'Rest Day';
+                    }
+                } else {
+                    // Default based on day of week
+                    if (in_array($dayName, ['Saturday', 'Sunday'])) {
+                        $status = 'Rest';
+                        $description = 'Weekend';
+                    } else {
+                        $status = 'Working';
+                        $description = 'Working Day';
+                    }
+                }
+                
+                $weekSchedule[] = [
+                    'date' => $dateStr,
+                    'day' => $dayName,
+                    'short_day' => substr($dayName, 0, 3),
+                    'status' => $status,
+                    'description' => $description,
+                    'is_today' => $dateStr === date('Y-m-d'),
+                    'remarks' => $dayData['remarks'] ?? null
+                ];
+            }
+            
+            return [
+                'success' => true,
+                'data' => $weekSchedule,
+                'week_start' => $monday,
+                'week_end' => $sunday
+            ];
+            
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Error getting week schedule: ' . $e->getMessage()
+            ];
+        }
+    }
 }
 ?>

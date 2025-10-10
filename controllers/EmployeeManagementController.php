@@ -589,6 +589,144 @@ class EmployeeManagementController
         }
     }
 
+    /**
+     * Automatically create employee work schedule based on all future working calendar dates
+     * Uses standard 8:00 AM - 5:00 PM shift for working days, Monday-Friday pattern
+     */
+    public function createAutomaticEmployeeSchedule($employeeId)
+    {
+        try {
+            // Default shift times
+            $shiftIn = '08:00:00';
+            $shiftOut = '17:00:00';
+            
+            // Standard working days (Monday=1 to Friday=5)
+            $standardWorkingDays = [1, 2, 3, 4, 5];
+            
+            // Get current user for created_by
+            $createdBy = $_SESSION['user_id'] ?? 1;
+            
+            // Get all future working calendar entries (from today onwards, up to 1 year)
+            $today = date('Y-m-d');
+            $futureDate = date('Y-m-d', strtotime('+1 year'));
+            
+            $calendarStmt = $this->db->prepare("
+                SELECT id as calendar_id, work_date, day_of_week, is_working, is_holiday, holiday_name
+                FROM working_calendar 
+                WHERE work_date >= ? AND work_date <= ?
+                ORDER BY work_date
+            ");
+            $calendarStmt->execute([$today, $futureDate]);
+            $calendarDays = $calendarStmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // If no working calendar exists, create schedule for current month + next 6 months with Mon-Fri pattern
+            if (empty($calendarDays)) {
+                return $this->createScheduleWithoutCalendar($employeeId, $shiftIn, $shiftOut, $standardWorkingDays);
+            }
+            
+            // Prepare insert statement for employee schedule
+            $scheduleStmt = $this->db->prepare("
+                INSERT INTO employee_schedule (employee_id, work_date, shift_in, shift_out, is_rest_day, calendar_id, notes, created_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            ");
+            
+            $schedulesCreated = 0;
+            
+            foreach ($calendarDays as $day) {
+                $dayOfWeek = intval($day['day_of_week']);
+                $workDate = $day['work_date'];
+                $calendarId = $day['calendar_id'];
+                $isWorkingDay = intval($day['is_working']) === 1;
+                $isHoliday = intval($day['is_holiday']) === 1;
+                
+                // Determine if this is a rest day for the employee
+                $isRestDay = 0;
+                $notes = 'Auto-assigned working day';
+                
+                if (!$isWorkingDay || $isHoliday) {
+                    // Company-wide non-working day or holiday
+                    $isRestDay = 1;
+                    $notes = $isHoliday ? "Holiday: " . ($day['holiday_name'] ?? 'Public Holiday') : 'Company rest day';
+                } elseif (!in_array($dayOfWeek, $standardWorkingDays)) {
+                    // Weekend (Saturday/Sunday) or non-standard working day
+                    $isRestDay = 1;
+                    $notes = 'Weekend rest day';
+                }
+                
+                // Create schedule entry
+                $scheduleStmt->execute([
+                    $employeeId,
+                    $workDate,
+                    $isRestDay ? null : $shiftIn,
+                    $isRestDay ? null : $shiftOut,
+                    $isRestDay,
+                    $calendarId,
+                    $notes,
+                    $createdBy
+                ]);
+                
+                $schedulesCreated++;
+            }
+            
+            return [
+                'success' => true, 
+                'message' => "Automatically created $schedulesCreated schedule entries for employee",
+                'schedules_created' => $schedulesCreated
+            ];
+            
+        } catch (Exception $e) {
+            error_log("createAutomaticEmployeeSchedule error: " . $e->getMessage());
+            throw new Exception("Failed to create automatic employee schedule: " . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Fallback method to create schedule when no working calendar exists
+     */
+    private function createScheduleWithoutCalendar($employeeId, $shiftIn, $shiftOut, $workingDays)
+    {
+        // Create schedule for next 6 months using Mon-Fri pattern
+        $startDate = new DateTime();
+        $endDate = clone $startDate;
+        $endDate->modify('+6 months');
+        
+        $scheduleStmt = $this->db->prepare("
+            INSERT INTO employee_schedule (employee_id, work_date, shift_in, shift_out, is_rest_day, notes, created_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+        ");
+        
+        $createdBy = $_SESSION['user_id'] ?? 1;
+        $schedulesCreated = 0;
+        $current = clone $startDate;
+        
+        while ($current <= $endDate) {
+            $dayOfWeek = intval($current->format('N')); // 1=Monday, 7=Sunday
+            $workDate = $current->format('Y-m-d');
+            
+            $isRestDay = !in_array($dayOfWeek, $workingDays) ? 1 : 0;
+            $notes = $isRestDay ? 'Weekend rest day' : 'Auto-assigned working day (no calendar)';
+            
+            $scheduleStmt->execute([
+                $employeeId,
+                $workDate,
+                $isRestDay ? null : $shiftIn,
+                $isRestDay ? null : $shiftOut,
+                $isRestDay,
+                $notes,
+                $createdBy
+            ]);
+            
+            $schedulesCreated++;
+            $current->modify('+1 day');
+        }
+        
+        return [
+            'success' => true, 
+            'message' => "Created $schedulesCreated schedule entries (fallback mode - no working calendar)",
+            'schedules_created' => $schedulesCreated
+        ];
+    }
+
 
 }
 ?>

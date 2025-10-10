@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Export Test</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h2>Export Test Page</h2>
+    
+    <button id="testCsv">Test CSV Export</button>
+    <button id="testPdf">Test PDF Export</button>
+    <button id="testDebug">Test Debug</button>
+    
+    <div id="result"></div>
+    
+    <script>
+        $('#testDebug').click(function() {
+            $.ajax({
+                url: '../ajax/export_attendance.php',
+                method: 'GET',
+                data: { debug: 1, format: 'csv', date: '2025-10-09' },
+                success: function(response) {
+                    $('#result').html('<h3>Debug Response:</h3><pre>' + response + '</pre>');
+                },
+                error: function(xhr, status, error) {
+                    $('#result').html('<h3>Error:</h3><p>' + xhr.responseText + '</p>');
+                }
+            });
+        });
+        
+        $('#testCsv').click(function() {
+            // Test with AJAX first to see response
+            $.ajax({
+                url: '../ajax/export_attendance.php',
+                method: 'POST',
+                data: { format: 'csv', date: '2025-10-09' },
+                success: function(response, status, xhr) {
+                    $('#result').html('<h3>CSV Response:</h3><p>Content-Type: ' + xhr.getResponseHeader('Content-Type') + '</p><pre>' + response.substring(0, 500) + '</pre>');
+                },
+                error: function(xhr, status, error) {
+                    $('#result').html('<h3>Error:</h3><p>' + xhr.responseText + '</p>');
+                }
+            });
+        });
+        
+        $('#testPdf').click(function() {
+            // Test PDF export
+            window.open('../ajax/export_attendance.php?format=pdf&date=2025-10-09', '_blank');
+        });
+    </script>
+</body>
+</html>
