@@ -5,12 +5,13 @@
 1. [Overview](#overview)
 2. [Trigger Architecture](#trigger-architecture)
 3. [Installation Guide](#installation-guide)
-4. [Integration Instructions](#integration-instructions)
-5. [Trigger Specifications](#trigger-specifications)
-6. [Usage Examples](#usage-examples)
-7. [Testing & Validation](#testing--validation)
-8. [Troubleshooting](#troubleshooting)
-9. [Best Practices](#best-practices)
+4. [Database Permissions & Grants](#database-permissions--grants)
+5. [Integration Instructions](#integration-instructions)
+6. [Trigger Specifications](#trigger-specifications)
+7. [Usage Examples](#usage-examples)
+8. [Testing & Validation](#testing--validation)
+9. [Troubleshooting](#troubleshooting)
+10. [Best Practices](#best-practices)
 
 ---
 
@@ -42,6 +43,190 @@ The Employee Management System implements **4 database triggers** to provide aut
 - **Primary Table**: `employees`
 - **Logging Table**: `system_logs`
 - **Reference Tables**: `users`, `department`, `job_position`
+
+---
+
+## Database Permissions & Grants
+
+### **Required Permissions for Triggers**
+
+Database triggers require specific permissions to function properly. Here are the essential grants needed:
+
+#### **For Development Environment (Local):**
+```sql
+-- Grant full privileges for development (use with caution)
+GRANT ALL PRIVILEGES ON emp.* TO 'emp_user'@'localhost' IDENTIFIED BY 'secure_password';
+FLUSH PRIVILEGES;
+```
+
+#### **For Production Environment (Recommended):**
+```sql
+-- Create dedicated database user for the application
+CREATE USER 'emp_app'@'localhost' IDENTIFIED BY 'your_secure_password_here';
+CREATE USER 'emp_app'@'%' IDENTIFIED BY 'your_secure_password_here'; -- For remote access if needed
+
+-- Grant specific permissions for the application user
+GRANT SELECT, INSERT, UPDATE ON emp.employees TO 'emp_app'@'localhost';
+GRANT SELECT, INSERT ON emp.system_logs TO 'emp_app'@'localhost';
+GRANT SELECT ON emp.users TO 'emp_app'@'localhost';
+GRANT SELECT ON emp.department TO 'emp_app'@'localhost';
+GRANT SELECT ON emp.job_position TO 'emp_app'@'localhost';
+
+-- Additional permissions for other tables your app uses
+GRANT SELECT, INSERT, UPDATE, DELETE ON emp.leave_balances TO 'emp_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON emp.dtr TO 'emp_app'@'localhost';
+GRANT SELECT ON emp.allowance_types TO 'emp_app'@'localhost';
+GRANT SELECT ON emp.deduction_types TO 'emp_app'@'localhost';
+
+-- Grant ability to set session variables (needed for trigger logging)
+GRANT SUPER ON *.* TO 'emp_app'@'localhost';
+-- OR alternatively, grant specific session variable privileges (MySQL 8.0+)
+GRANT SESSION_VARIABLES_ADMIN ON *.* TO 'emp_app'@'localhost';
+
+FLUSH PRIVILEGES;
+```
+
+#### **For Trigger Installation (Admin User):**
+```sql
+-- The user installing triggers needs these privileges
+GRANT CREATE ON emp.* TO 'admin_user'@'localhost';
+GRANT ALTER ON emp.* TO 'admin_user'@'localhost';
+GRANT TRIGGER ON emp.* TO 'admin_user'@'localhost';
+GRANT DROP ON emp.* TO 'admin_user'@'localhost'; -- For dropping existing triggers
+FLUSH PRIVILEGES;
+```
+
+### **Security Best Practices for Grants:**
+
+#### **1. Principle of Least Privilege**
+```sql
+-- ✅ GOOD: Grant only what's needed
+GRANT SELECT, INSERT, UPDATE ON emp.employees TO 'emp_app'@'localhost';
+
+-- ❌ BAD: Don't grant unnecessary privileges
+-- GRANT ALL PRIVILEGES ON *.* TO 'emp_app'@'localhost'; -- Too permissive!
+```
+
+#### **2. Separate Users for Different Purposes**
+```sql
+-- Application user (limited permissions)
+CREATE USER 'emp_app'@'localhost' IDENTIFIED BY 'app_password';
+GRANT SELECT, INSERT, UPDATE ON emp.employees TO 'emp_app'@'localhost';
+
+-- Admin user (full permissions for maintenance)
+CREATE USER 'emp_admin'@'localhost' IDENTIFIED BY 'admin_password';
+GRANT ALL PRIVILEGES ON emp.* TO 'emp_admin'@'localhost';
+
+-- Read-only user (for reports/analytics)
+CREATE USER 'emp_readonly'@'localhost' IDENTIFIED BY 'readonly_password';
+GRANT SELECT ON emp.* TO 'emp_readonly'@'localhost';
+```
+
+#### **3. Network Security**
+```sql
+-- ✅ GOOD: Restrict by host
+CREATE USER 'emp_app'@'localhost';        -- Local only
+CREATE USER 'emp_app'@'192.168.1.%';     -- Specific network
+CREATE USER 'emp_app'@'app-server.com';  -- Specific host
+
+-- ❌ BAD: Wildcard access (use only if absolutely necessary)
+-- CREATE USER 'emp_app'@'%';  -- Any host - security risk!
+```
+
+### **Grant Verification Commands:**
+
+```sql
+-- Check current user privileges
+SHOW GRANTS FOR 'emp_app'@'localhost';
+
+-- Check all users and their hosts
+SELECT User, Host FROM mysql.user WHERE User LIKE 'emp%';
+
+-- Check table-level permissions
+SELECT * FROM information_schema.TABLE_PRIVILEGES 
+WHERE GRANTEE LIKE '%emp_app%';
+
+-- Check if triggers can be created
+SELECT TRIGGER_SCHEMA, TRIGGER_NAME, DEFINER 
+FROM information_schema.TRIGGERS 
+WHERE TRIGGER_SCHEMA = 'emp';
+```
+
+### **Common Permission Issues & Solutions:**
+
+#### **Issue 1: "Access denied for user"**
+```sql
+-- Solution: Grant required permissions
+GRANT SELECT, INSERT, UPDATE ON emp.employees TO 'emp_app'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+#### **Issue 2: "Trigger does not have privileges to access tables"**
+```sql
+-- Solution: Ensure trigger definer has access to all referenced tables
+GRANT SELECT ON emp.users TO 'emp_app'@'localhost';
+GRANT SELECT ON emp.department TO 'emp_app'@'localhost';
+GRANT SELECT ON emp.job_position TO 'emp_app'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+#### **Issue 3: "Cannot set @current_user_id variable"**
+```sql
+-- Solution: Grant session variable privileges
+GRANT SUPER ON *.* TO 'emp_app'@'localhost';
+-- OR for MySQL 8.0+
+GRANT SESSION_VARIABLES_ADMIN ON *.* TO 'emp_app'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+### **Grant Setup Script for Production:**
+
+Create this as `setup_grants.sql`:
+```sql
+-- =============================================
+-- PRODUCTION GRANTS SETUP SCRIPT
+-- Run this as root/admin user
+-- =============================================
+
+-- Create application user
+CREATE USER IF NOT EXISTS 'emp_app'@'localhost' IDENTIFIED BY 'CHANGE_THIS_PASSWORD';
+
+-- Core application permissions
+GRANT SELECT, INSERT, UPDATE ON emp.employees TO 'emp_app'@'localhost';
+GRANT SELECT, INSERT ON emp.system_logs TO 'emp_app'@'localhost';
+GRANT SELECT ON emp.users TO 'emp_app'@'localhost';
+GRANT SELECT ON emp.department TO 'emp_app'@'localhost';
+GRANT SELECT ON emp.job_position TO 'emp_app'@'localhost';
+
+-- Additional table permissions (adjust as needed)
+GRANT SELECT, INSERT, UPDATE, DELETE ON emp.leave_balances TO 'emp_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON emp.dtr TO 'emp_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON emp.employee_allowances TO 'emp_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON emp.employee_deductions TO 'emp_app'@'localhost';
+GRANT SELECT ON emp.allowance_types TO 'emp_app'@'localhost';
+GRANT SELECT ON emp.deduction_types TO 'emp_app'@'localhost';
+
+-- Session variable permissions (needed for trigger logging)
+GRANT SESSION_VARIABLES_ADMIN ON *.* TO 'emp_app'@'localhost';
+
+-- Apply changes
+FLUSH PRIVILEGES;
+
+-- Verify grants
+SHOW GRANTS FOR 'emp_app'@'localhost';
+```
+
+### **Update Database Configuration:**
+
+Update your `shared/config.php` to use the new user:
+```php
+// Database configuration
+define('DB_HOST', 'localhost');
+define('DB_PORT', '3306');
+define('DB_NAME', 'emp');
+define('DB_USER', 'emp_app');      // Use application user
+define('DB_PASS', 'your_password'); // Use secure password
+```
 
 ---
 
@@ -366,6 +551,40 @@ Solution: Use correct column names. The employees table doesn't have an 'address
 ```
 Solution: Set the user context before operations
 Code: $pdo->exec("SET @current_user_id = {$_SESSION['user_id']}");
+```
+
+#### **Issue 5: "Access denied for user 'emp_user'@'localhost'"**
+```
+Solution: Check database grants and credentials
+1. Verify user exists: SELECT User FROM mysql.user WHERE User = 'emp_user';
+2. Check grants: SHOW GRANTS FOR 'emp_user'@'localhost';
+3. Update shared/config.php with correct credentials
+4. Run grant setup: mysql -u root -p < setup_grants.sql
+```
+
+#### **Issue 6: "Cannot set session variable @current_user_id"**
+```
+Solution: Grant session variable permissions
+For MySQL 8.0+: GRANT SESSION_VARIABLES_ADMIN ON *.* TO 'emp_app'@'localhost';
+For older versions: GRANT SUPER ON *.* TO 'emp_app'@'localhost';
+Then: FLUSH PRIVILEGES;
+```
+
+#### **Issue 7: "Trigger does not have privileges to access table"**
+```
+Solution: Ensure trigger definer has access to all referenced tables
+GRANT SELECT ON emp.users TO 'emp_app'@'localhost';
+GRANT SELECT ON emp.department TO 'emp_app'@'localhost';
+GRANT SELECT ON emp.job_position TO 'emp_app'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+#### **Issue 8: "Table 'emp.employees' doesn't exist"**
+```
+Solution: Check database name and table existence
+1. Verify database: SHOW DATABASES LIKE 'emp';
+2. Check tables: SHOW TABLES FROM emp;
+3. Update DB_NAME in shared/config.php if needed
 ```
 
 ### **Debugging Commands**

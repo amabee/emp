@@ -3,11 +3,24 @@
 
 ## ⚡ Quick Setup
 ```bash
-# Install triggers
+# 1. Set up database permissions (production)
+mysql -u root -p < setup_grants.sql
+
+# 2. Install triggers
 php create_triggers.php
 
-# Test triggers  
+# 3. Test triggers  
 php final_trigger_test.php
+```
+
+## 🔐 **Essential Grants (Production)**
+```sql
+-- Create app user with minimal permissions
+CREATE USER 'emp_app'@'localhost' IDENTIFIED BY 'secure_password';
+GRANT SELECT, INSERT, UPDATE ON emp.employees TO 'emp_app'@'localhost';
+GRANT SELECT, INSERT ON emp.system_logs TO 'emp_app'@'localhost';
+GRANT SESSION_VARIABLES_ADMIN ON *.* TO 'emp_app'@'localhost';
+FLUSH PRIVILEGES;
 ```
 
 ## 🔧 Integration Checklist
