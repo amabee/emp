@@ -53,7 +53,8 @@ $page_aliases = [
   'system-logs' => 'system-logs',
   'reports' => 'reports',
   'dtr' => 'dtr',
-  'performance' => 'performance'
+  'performance' => 'performance',
+  'advanced_analytics' => 'advanced_analytics'
 ];
 
 // Check if current page has an alias
@@ -184,9 +185,15 @@ if (isset($page_aliases[$current_page])) {
     <?php if (in_array($user_type, ['admin', 'supervisor', 'hr'])): ?>
       <!-- Admin + HR + Supervisor Section -->
       <li class="menu-header small text-uppercase">
-        <span class="menu-header-text">Monitoring</span>
+        <span class="menu-header-text">Monitoring & Analytics</span>
       </li>
       
+      <li class="menu-item <?php echo isMenuActive('advanced_analytics', $current_page); ?>">
+        <a href="./advanced_analytics.php" class="menu-link">
+          <i class="menu-icon tf-icons bx bx-trending-up"></i>
+          <div data-i18n="Analytics">Advanced Analytics</div>
+        </a>
+      </li>
       <li class="menu-item <?php echo isMenuActive('attendance', $current_page); ?>">
         <a href="./attendance.php" class="menu-link">
           <i class="menu-icon tf-icons bx bx-calendar-check"></i>

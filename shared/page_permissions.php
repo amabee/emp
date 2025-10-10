@@ -26,5 +26,8 @@ return [
   
   // Additional route files
   'dashboard_employee.php' => ['employee'],
-  'dashboard_supervisor.php' => ['supervisor']
+  'dashboard_supervisor.php' => ['supervisor'],
+
+  // Advance analytics
+  'advanced_analytics.php' => ['admin', 'supervisor', 'hr']
 ];
