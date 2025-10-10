@@ -52,7 +52,9 @@ $page_aliases = [
   'allowances' => 'allowances',
   'system-logs' => 'system-logs',
   'reports' => 'reports',
-  'dtr' => 'dtr'
+  'dtr' => 'dtr',
+  'performance' => 'performance',
+  'advanced_analytics' => 'advanced_analytics'
 ];
 
 // Check if current page has an alias
@@ -99,7 +101,8 @@ if (isset($page_aliases[$current_page])) {
       </li>
       <li class="menu-item <?php echo isMenuActive('user-management', $current_page); ?>">
         <a href="./user-management.php" class="menu-link">
-          <i class="menu-icon tf-icons bx bx-user-cog"></i>
+          <!-- <i class="menu-icon tf-icons bx bx-cog"></i> -->
+          <i class='menu-icon tf-icons bx  bx-user'  ></i> 
           <div data-i18n="Users">User Management</div>
         </a>
       </li>
@@ -152,23 +155,45 @@ if (isset($page_aliases[$current_page])) {
           <div data-i18n="Allowances">Allowances</div>
         </a>
       </li>
+      <li class="menu-item <?php echo isMenuActive('performance', $current_page); ?>">
+        <a href="./performance.php" class="menu-link">
+          <i class="menu-icon tf-icons bx bx-bar-chart"></i>
+          <div data-i18n="Performance">Performance Reports (View Only)</div>
+        </a>
+      </li>
+    <?php endif; ?>
+
+    <?php if ($user_type === 'supervisor'): ?>
+      <!-- Supervisor Section -->
+      <li class="menu-header small text-uppercase">
+        <span class="menu-header-text">Team Management</span>
+      </li>
+      <li class="menu-item <?php echo isMenuActive('employee-management', $current_page); ?>">
+        <a href="./employee-management.php" class="menu-link">
+          <i class="menu-icon tf-icons bx bx-group"></i>
+          <div data-i18n="Employees">View Team Members</div>
+        </a>
+      </li>
+      <li class="menu-item <?php echo isMenuActive('performance', $current_page); ?>">
+        <a href="./performance.php" class="menu-link">
+          <i class="menu-icon tf-icons bx bx-bar-chart"></i>
+          <div data-i18n="Performance">Performance Evaluations</div>
+        </a>
+      </li>
     <?php endif; ?>
 
     <?php if (in_array($user_type, ['admin', 'supervisor', 'hr'])): ?>
       <!-- Admin + HR + Supervisor Section -->
       <li class="menu-header small text-uppercase">
-        <span class="menu-header-text">Monitoring <?php echo $user_type === 'supervisor' ? '(View Only)' : ''; ?></span>
+        <span class="menu-header-text">Monitoring & Analytics</span>
       </li>
       
-      <?php if ($user_type === 'supervisor'): ?>
-        <li class="menu-item <?php echo isMenuActive('employee-management', $current_page); ?>">
-          <a href="./employee-management.php" class="menu-link">
-            <i class="menu-icon tf-icons bx bx-group"></i>
-            <div data-i18n="Employees">View Employees</div>
-          </a>
-        </li>
-      <?php endif; ?>
-      
+      <li class="menu-item <?php echo isMenuActive('advanced_analytics', $current_page); ?>">
+        <a href="./advanced_analytics.php" class="menu-link">
+          <i class="menu-icon tf-icons bx bx-trending-up"></i>
+          <div data-i18n="Analytics">Advanced Analytics</div>
+        </a>
+      </li>
       <li class="menu-item <?php echo isMenuActive('attendance', $current_page); ?>">
         <a href="./attendance.php" class="menu-link">
           <i class="menu-icon tf-icons bx bx-calendar-check"></i>

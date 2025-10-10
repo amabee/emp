@@ -17,44 +17,106 @@ class DashboardController
         try {
             $stats = [];
 
-            // Get total employees
-            $stmt = $this->db->prepare("SELECT COUNT(*) as count FROM employees WHERE employment_status = 1");
-            $stmt->execute();
-            $stats['total_employees'] = $stmt->fetch()['count'];
-
-            // Get employee growth this month
+            // SUBQUERY TYPE 1: SCALAR SUBQUERY - Get comprehensive employee statistics
             $stmt = $this->db->prepare("
-                SELECT COUNT(*) as count 
-                FROM employees 
-                WHERE employment_status = 1 
-                AND date_hired >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)
+                SELECT 
+                    (SELECT COUNT(*) FROM employees WHERE employment_status = 1) as total_employees,
+                    (SELECT COUNT(*) FROM employees 
+                     WHERE employment_status = 1 
+                     AND date_hired >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) as new_employees_this_month,
+                    (SELECT COUNT(DISTINCT department_name) FROM department) as total_departments,
+                    (SELECT COUNT(*) FROM users WHERE active_status = 'active') as total_users,
+                    (SELECT COALESCE(AVG(rating), 0) FROM performance) as avg_performance_rating
             ");
             $stmt->execute();
-            $stats['new_employees_this_month'] = $stmt->fetch()['count'];
+            $result = $stmt->fetch();
+            
+            $stats['total_employees'] = $result['total_employees'];
+            $stats['new_employees_this_month'] = $result['new_employees_this_month'];
+            $stats['total_departments'] = $result['total_departments'];
+            $stats['total_users'] = $result['total_users'];
+            $stats['avg_performance_rating'] = round($result['avg_performance_rating'], 2);
 
-            // Calculate percentage growth (rough estimate)
+            // Calculate percentage growth
             $stats['employee_growth_percentage'] = $stats['total_employees'] > 0 ? 
                 round(($stats['new_employees_this_month'] / $stats['total_employees']) * 100, 1) : 0;
 
-            // Get pending leave requests (if table exists)
+            // SUBQUERY TYPE 2: CORRELATED SUBQUERY - Department performance analysis
+            $stmt = $this->db->prepare("
+                SELECT 
+                    d.department_name,
+                    (SELECT COUNT(*) FROM employees e WHERE e.department_id = d.department_id AND e.employment_status = 1) as employee_count,
+                    (SELECT COALESCE(AVG(p.rating), 0) 
+                     FROM performance p 
+                     JOIN employees e ON p.employee_id = e.employee_id 
+                     WHERE e.department_id = d.department_id) as dept_avg_performance
+                FROM department d
+                ORDER BY dept_avg_performance DESC
+                LIMIT 3
+            ");
+            $stmt->execute();
+            $stats['top_performing_departments'] = $stmt->fetchAll();
+
+            // SUBQUERY TYPE 3: EXISTS SUBQUERY - Employees with recent performance evaluations
+            $stmt = $this->db->prepare("
+                SELECT COUNT(*) as count
+                FROM employees e
+                WHERE employment_status = 1 
+                AND EXISTS (
+                    SELECT 1 FROM performance p 
+                    WHERE p.employee_id = e.employee_id 
+                    AND p.period_end >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+                )
+            ");
+            $stmt->execute();
+            $stats['employees_with_recent_evaluations'] = $stmt->fetch()['count'];
+
+            // SUBQUERY TYPE 4: IN/NOT IN SUBQUERY - Leave statistics
             try {
-                $stmt = $this->db->prepare("SELECT COUNT(*) as count FROM leave_requests WHERE status = 'pending'");
+                $stmt = $this->db->prepare("
+                    SELECT 
+                        (SELECT COUNT(*) FROM leave_requests WHERE status = 'pending') as pending_leaves,
+                        (SELECT COUNT(DISTINCT employee_id) 
+                         FROM employees 
+                         WHERE employee_id IN (
+                             SELECT DISTINCT employee_id FROM leave_requests 
+                             WHERE status = 'approved' 
+                             AND leave_start >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)
+                         )) as employees_with_recent_leaves
+                ");
                 $stmt->execute();
-                $stats['pending_leaves'] = $stmt->fetch()['count'];
+                $leave_stats = $stmt->fetch();
+                $stats['pending_leaves'] = $leave_stats['pending_leaves'];
+                $stats['employees_with_recent_leaves'] = $leave_stats['employees_with_recent_leaves'];
             } catch (Exception $e) {
-                // Table might not exist yet
                 $stats['pending_leaves'] = 0;
+                $stats['employees_with_recent_leaves'] = 0;
             }
 
-            // Get total departments
-            $stmt = $this->db->prepare("SELECT COUNT(DISTINCT department_name) as count FROM department");
-            $stmt->execute();
-            $stats['total_departments'] = $stmt->fetch()['count'];
-
-            // Get total active users
-            $stmt = $this->db->prepare("SELECT COUNT(*) as count FROM users WHERE active_status = 'active'");
-            $stmt->execute();
-            $stats['total_users'] = $stmt->fetch()['count'];
+            // SUBQUERY TYPE 5: MULTIROW SUBQUERY - Salary and compensation analysis
+            try {
+                $stmt = $this->db->prepare("
+                    SELECT 
+                        (SELECT COUNT(*) FROM employees e 
+                         WHERE e.employee_id IN (
+                             SELECT ea.employee_id FROM employee_allowance ea
+                         )) as employees_with_allowances,
+                        (SELECT COALESCE(AVG(basic_salary), 0) FROM employees WHERE employment_status = 1) as avg_basic_salary,
+                        (SELECT COUNT(*) FROM employees e
+                         WHERE e.basic_salary > (
+                             SELECT AVG(basic_salary) FROM employees WHERE employment_status = 1
+                         )) as above_avg_salary_count
+                ");
+                $stmt->execute();
+                $salary_stats = $stmt->fetch();
+                $stats['employees_with_allowances'] = $salary_stats['employees_with_allowances'];
+                $stats['avg_basic_salary'] = round($salary_stats['avg_basic_salary'], 2);
+                $stats['above_avg_salary_count'] = $salary_stats['above_avg_salary_count'];
+            } catch (Exception $e) {
+                $stats['employees_with_allowances'] = 0;
+                $stats['avg_basic_salary'] = 0;
+                $stats['above_avg_salary_count'] = 0;
+            }
 
             return $stats;
 

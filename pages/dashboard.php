@@ -146,6 +146,140 @@ ob_start();
     </div>
   </div>
 
+  <!-- Advanced Analytics Cards - Powered by Subqueries -->
+  <div class="col-lg-3 col-md-6 col-6 mb-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="card-title d-flex align-items-start justify-content-between">
+          <div class="avatar flex-shrink-0">
+            <span class="avatar-initial rounded bg-label-secondary">
+              <i class="bx bx-star"></i>
+            </span>
+          </div>
+        </div>
+        <p class="mb-1">Avg Performance</p>
+        <h4 class="card-title mb-3" id="avgPerformanceRating">0.0</h4>
+        <small class="text-secondary fw-medium">
+          <i class="bx bx-trending-up"></i> Out of 5.0
+        </small>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-3 col-md-6 col-6 mb-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="card-title d-flex align-items-start justify-content-between">
+          <div class="avatar flex-shrink-0">
+            <span class="avatar-initial rounded bg-label-primary">
+              <i class="bx bx-check-circle"></i>
+            </span>
+          </div>
+        </div>
+        <p class="mb-1">Recent Evaluations</p>
+        <h4 class="card-title mb-3" id="recentEvaluations">0</h4>
+        <small class="text-primary fw-medium">
+          <i class="bx bx-calendar"></i> Last 6 months
+        </small>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-3 col-md-6 col-6 mb-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="card-title d-flex align-items-start justify-content-between">
+          <div class="avatar flex-shrink-0">
+            <span class="avatar-initial rounded bg-label-success">
+              <i class="bx bx-money"></i>
+            </span>
+          </div>
+        </div>
+        <p class="mb-1">Avg Salary</p>
+        <h4 class="card-title mb-3" id="avgBasicSalary">₱0</h4>
+        <small class="text-success fw-medium">
+          <i class="bx bx-up-arrow-alt"></i> <span id="aboveAvgCount">0</span> above avg
+        </small>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-3 col-md-6 col-6 mb-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="card-title d-flex align-items-start justify-content-between">
+          <div class="avatar flex-shrink-0">
+            <span class="avatar-initial rounded bg-label-warning">
+              <i class="bx bx-gift"></i>
+            </span>
+          </div>
+        </div>
+        <p class="mb-1">With Allowances</p>
+        <h4 class="card-title mb-3" id="employeesWithAllowances">0</h4>
+        <small class="text-warning fw-medium">
+          <i class="bx bx-plus-circle"></i> Employees
+        </small>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Performing Departments - Correlated Subquery Results -->
+  <div class="col-12 col-lg-6 mb-6">
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <h5 class="m-0 me-2">🏆 Top Performing Departments</h5>
+        <small class="text-muted">Based on performance ratings</small>
+      </div>
+      <div class="card-body">
+        <div id="topDepartmentsList">
+          <div class="d-flex justify-content-center">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leave Analytics - IN/EXISTS Subquery Results -->
+  <div class="col-12 col-lg-6 mb-6">
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <h5 class="m-0 me-2">📊 Leave Analytics</h5>
+        <small class="text-muted">Subquery-powered insights</small>
+      </div>
+      <div class="card-body">
+        <div class="row text-center">
+          <div class="col-6">
+            <div class="d-flex flex-column">
+              <div class="avatar mx-auto mb-2">
+                <span class="avatar-initial rounded bg-label-info">
+                  <i class="bx bx-calendar-x"></i>
+                </span>
+              </div>
+              <span class="text-nowrap">Recent Leaves</span>
+              <h4 class="mb-0" id="employeesWithRecentLeaves">0</h4>
+              <small class="text-muted">Last 3 months</small>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="d-flex flex-column">
+              <div class="avatar mx-auto mb-2">
+                <span class="avatar-initial rounded bg-label-warning">
+                  <i class="bx bx-time-five"></i>
+                </span>
+              </div>
+              <span class="text-nowrap">Pending</span>
+              <h4 class="mb-0" id="pendingLeavesCount">0</h4>
+              <small class="text-muted">Awaiting approval</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Attendance Overview -->
   <div class="col-12 col-lg-8 mb-6">
     <div class="card">
@@ -223,27 +357,86 @@ ob_start();
   }
 
   function updateDashboardStats(stats) {
-    // Update employee count
+    // Basic Statistics (Original)
     $('#totalEmployees').text(stats.total_employees);
+    $('#totalDepartments').text(stats.total_departments);
+    $('#totalUsers').text(stats.total_users);
+    $('#pendingLeaves').text(stats.pending_leaves);
 
-    // Update employee growth
+    // Employee growth
     const growthText = stats.employee_growth_percentage > 0 ?
       `+${stats.employee_growth_percentage}% this month` :
       'No growth this month';
     $('#employeeGrowth').html(`<i class="bx bx-up-arrow-alt"></i> ${growthText}`);
 
-    // Update pending leaves
-    $('#pendingLeaves').text(stats.pending_leaves);
-
-    // Update leave status
+    // Leave status
     const leaveStatusText = stats.pending_leaves > 0 ? 'Requires attention' : 'All clear';
     $('#leaveStatus').html(`<i class="bx bx-right-arrow-alt"></i> ${leaveStatusText}`);
 
-    // Update departments count
-    $('#totalDepartments').text(stats.total_departments);
+    // SUBQUERY-POWERED ADVANCED STATISTICS
+    
+    // Scalar Subquery Results - Performance Rating
+    $('#avgPerformanceRating').text(stats.avg_performance_rating || '0.0');
+    
+    // EXISTS Subquery Results - Recent Evaluations
+    $('#recentEvaluations').text(stats.employees_with_recent_evaluations || '0');
+    
+    // Multirow Subquery Results - Salary Analytics
+    const avgSalary = stats.avg_basic_salary || 0;
+    $('#avgBasicSalary').text('₱' + new Intl.NumberFormat().format(avgSalary));
+    $('#aboveAvgCount').text(stats.above_avg_salary_count || '0');
+    
+    // IN Subquery Results - Allowances
+    $('#employeesWithAllowances').text(stats.employees_with_allowances || '0');
+    
+    // IN/NOT IN Subquery Results - Leave Analytics
+    $('#employeesWithRecentLeaves').text(stats.employees_with_recent_leaves || '0');
+    $('#pendingLeavesCount').text(stats.pending_leaves || '0');
 
-    // Update users count
-    $('#totalUsers').text(stats.total_users);
+    // CORRELATED SUBQUERY RESULTS - Top Performing Departments
+    updateTopDepartments(stats.top_performing_departments || []);
+  }
+
+  function updateTopDepartments(departments) {
+    const container = $('#topDepartmentsList');
+    
+    if (!departments || departments.length === 0) {
+      container.html(`
+        <div class="text-center text-muted">
+          <i class="bx bx-info-circle mb-2"></i>
+          <p class="mb-0">No performance data available</p>
+        </div>
+      `);
+      return;
+    }
+
+    let html = '';
+    departments.forEach((dept, index) => {
+      const badgeClass = index === 0 ? 'bg-primary' : index === 1 ? 'bg-success' : 'bg-info';
+      const iconClass = index === 0 ? 'bx-trophy' : index === 1 ? 'bx-medal' : 'bx-award';
+      const avgRating = parseFloat(dept.dept_avg_performance || 0).toFixed(1);
+      
+      html += `
+        <div class="d-flex align-items-center mb-3">
+          <div class="avatar flex-shrink-0 me-3">
+            <span class="avatar-initial rounded ${badgeClass}">
+              <i class="bx ${iconClass}"></i>
+            </span>
+          </div>
+          <div class="d-flex w-100 align-items-center justify-content-between">
+            <div>
+              <h6 class="mb-0">${dept.department_name}</h6>
+              <small class="text-muted">${dept.employee_count} employees</small>
+            </div>
+            <div class="text-end">
+              <span class="badge ${badgeClass}">${avgRating}/5.0</span>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    
+    container.html(html);
   }
 
   function updateRecentActivity(activities) {

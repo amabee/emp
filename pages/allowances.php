@@ -32,7 +32,7 @@ ob_start();
         </div>
         <div class="col-sm-4 text-center text-sm-left">
           <div class="card-body pb-0 px-0 px-md-4">
-            <img src="../assets/img/illustrations/deductions.png" height="140" alt="Allowances">
+            <img src="../assets/img/illustrations/payments.png" height="140" alt="Allowances">
           </div>
         </div>
       </div>

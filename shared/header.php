@@ -17,12 +17,12 @@
 
     <ul class="navbar-nav flex-row align-items-center ms-auto">
       <!-- Notification -->
-      <li class="nav-item me-3">
+      <!-- <li class="nav-item me-3">
         <a class="nav-link" href="javascript:void(0);">
           <i class="bx bx-bell fs-4"></i>
           <span class="badge bg-danger rounded-pill badge-notifications" style="font-size: 0.75rem;">5</span>
         </a>
-      </li>
+      </li> -->
       <!-- /Notification -->
       
       <!-- User -->

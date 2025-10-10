@@ -178,14 +178,14 @@ function loadEmployeeInfo() {
     method: 'GET',
     dataType: 'json',
     success: function(response) {
-      if (response.success && response.data) {
-        const data = response.data;
-        $('#employee-id').text(data.employee_number || 'N/A');
-        $('#employee-department').text(data.department_name || 'N/A');
-        $('#employee-position').text(data.position_name || 'N/A');
+      if (response.success && response.user) {
+        const user = response.user;
+        $('#employee-id').text(user.employee_id || 'N/A');
+        $('#employee-department').text(user.department_name || 'N/A');
+        $('#employee-position').text(user.position_name || 'N/A');
         
-        if (data.date_hired) {
-          const hiredDate = new Date(data.date_hired);
+        if (user.date_hired) {
+          const hiredDate = new Date(user.date_hired);
           $('#employee-hired').text(hiredDate.toLocaleDateString());
         } else {
           $('#employee-hired').text('N/A');
@@ -204,12 +204,14 @@ function loadLeaveBalances() {
     method: 'GET',
     dataType: 'json',
     success: function(response) {
-      if (response.success && response.data) {
-        const balances = response.data;
-        $('#vacation-balance').text((balances.vacation_total - balances.vacation_used) + '/' + balances.vacation_total);
-        $('#sick-balance').text((balances.sick_total - balances.sick_used) + '/' + balances.sick_total);
-        $('#personal-balance').text((balances.personal_total - balances.personal_used) + '/' + balances.personal_total);
-        $('#emergency-balance').text((balances.emergency_total - balances.emergency_used) + '/' + balances.emergency_total);
+      if (response.success && response.data && response.data.length > 0) {
+        const balances = response.data[0]; // Get first (and only) employee's balance
+        $('#vacation-balance').text(balances.vacation_remaining + '/' + balances.vacation_total);
+        $('#sick-balance').text(balances.sick_remaining + '/' + balances.sick_total);
+        $('#personal-balance').text(balances.personal_remaining + '/' + balances.personal_total);
+        $('#emergency-balance').text(balances.emergency_remaining + '/' + balances.emergency_total);
+      } else {
+        $('#vacation-balance, #sick-balance, #personal-balance, #emergency-balance').text('0/0');
       }
     },
     error: function() {

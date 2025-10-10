@@ -31,10 +31,14 @@ class UserManagementController
     try {
       $stmt = $this->db->prepare(
         'SELECT u.user_id, u.username, u.active_status, ut.type_name AS user_type, ut.user_type_id,
-                e.first_name, e.last_name, e.email, e.image, e.gender, e.birthdate
+                e.employee_id, e.first_name, e.last_name, e.email, e.image, e.gender, e.birthdate,
+                e.contact_number, e.basic_salary, e.employment_status, e.date_hired,
+                d.department_name, p.position_name
          FROM users u
          LEFT JOIN user_type ut ON u.user_type_id = ut.user_type_id
          LEFT JOIN employees e ON u.user_id = e.user_id
+         LEFT JOIN department d ON e.department_id = d.department_id
+         LEFT JOIN job_position p ON e.position_id = p.position_id
          WHERE u.user_id = ?'
       );
       $stmt->execute([$id]);
