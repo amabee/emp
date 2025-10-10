@@ -265,7 +265,7 @@ class LeaveController
 
             // Server-side authorization: ensure acting user is admin or hr
             $currentUserType = $_SESSION['user_type'] ?? '';
-            $allowedTypes = ['admin', 'hr'];
+            $allowedTypes = ['admin', 'hr', 'supervisor'];
             if (!in_array(strtolower($currentUserType), $allowedTypes)) {
                 throw new Exception('Unauthorized: you do not have permission to approve or reject leave requests');
             }

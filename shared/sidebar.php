@@ -52,7 +52,8 @@ $page_aliases = [
   'allowances' => 'allowances',
   'system-logs' => 'system-logs',
   'reports' => 'reports',
-  'dtr' => 'dtr'
+  'dtr' => 'dtr',
+  'performance' => 'performance'
 ];
 
 // Check if current page has an alias
@@ -99,7 +100,8 @@ if (isset($page_aliases[$current_page])) {
       </li>
       <li class="menu-item <?php echo isMenuActive('user-management', $current_page); ?>">
         <a href="./user-management.php" class="menu-link">
-          <i class="menu-icon tf-icons bx bx-user-cog"></i>
+          <!-- <i class="menu-icon tf-icons bx bx-cog"></i> -->
+          <i class='menu-icon tf-icons bx  bx-user'  ></i> 
           <div data-i18n="Users">User Management</div>
         </a>
       </li>
@@ -117,7 +119,7 @@ if (isset($page_aliases[$current_page])) {
       </li>
     <?php endif; ?>
 
-    <?php if (in_array($user_type, ['admin', 'hr'])): ?>
+    <?php if (in_array($user_type, ['admin', 'hr', 'supervisor'])): ?>
       <!-- Admin + HR Section -->
       <li class="menu-header small text-uppercase">
         <span class="menu-header-text">HR Management</span>
@@ -152,12 +154,27 @@ if (isset($page_aliases[$current_page])) {
           <div data-i18n="Allowances">Allowances</div>
         </a>
       </li>
+      <?php if ($user_type === 'supervisor'): ?>
+        <li class="menu-item <?php echo isMenuActive('performance', $current_page); ?>">
+          <a href="./performance.php" class="menu-link">
+            <i class="menu-icon tf-icons bx bx-bar-chart"></i>
+            <div data-i18n="Performance">Performance Evaluations</div>
+          </a>
+        </li>
+      <?php else: ?>
+        <li class="menu-item <?php echo isMenuActive('performance', $current_page); ?>">
+          <a href="./performance.php" class="menu-link">
+            <i class="menu-icon tf-icons bx bx-bar-chart"></i>
+            <div data-i18n="Performance">Performance Reports (View Only)</div>
+          </a>
+        </li>
+      <?php endif; ?>
     <?php endif; ?>
 
     <?php if (in_array($user_type, ['admin', 'supervisor', 'hr'])): ?>
       <!-- Admin + HR + Supervisor Section -->
       <li class="menu-header small text-uppercase">
-        <span class="menu-header-text">Monitoring <?php echo $user_type === 'supervisor' ? '(View Only)' : ''; ?></span>
+        <span class="menu-header-text">Monitoring</span>
       </li>
       
       <?php if ($user_type === 'supervisor'): ?>

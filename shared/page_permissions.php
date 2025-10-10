@@ -15,6 +15,7 @@ return [
   'employee-management.php' => ['admin', 'supervisor', 'hr'],
   'attendance.php' => ['admin', 'supervisor', 'hr'],
   'reports.php' => ['admin', 'supervisor', 'hr'],
+  'performance.php'=> ['admin', 'supervisor', 'hr'],
   
   // All users can access these pages
   'dashboard.php' => ['admin', 'supervisor', 'hr', 'employee'],

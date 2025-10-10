@@ -187,7 +187,7 @@ ob_start();
                   <th>Applied On</th>
                   <th>Reason</th>
                   <th>Comments</th>
-                  <?php if (in_array(strtolower($user_type ?? ''), ['admin','hr'])): ?>
+                  <?php if (in_array(strtolower($user_type ?? ''), ['admin','hr','supervisor'])): ?>
                   <th class="text-center">Actions</th>
                   <?php endif; ?>
                 </tr>
@@ -223,12 +223,12 @@ ob_start();
       </div>
       <div class="modal-body">
         <form id="addLeaveForm">
-          <?php if (in_array(strtolower($user_type ?? ''), ['admin','hr'])): ?>
+          <?php if (in_array(strtolower($user_type ?? ''), ['admin','hr','supervisor'])): ?>
           <div class="mb-3">
             <label class="form-label">Employee *</label>
             <select class="form-select" name="employee_id" required>
               <option value="">Select Employee</option>
-              <!-- Employee options will be populated dynamically for admins/HR -->
+              <!-- Employee options will be populated dynamically for admins/HR/supervisors -->
             </select>
           </div>
           <?php endif; ?>
@@ -608,14 +608,14 @@ ob_start();
         showConfirmButton: false
       });
     } else {
-      alert(message);
+      alert(message); 
     }
   }
 
   function renderLeaveRequests(items) {
     const $body = $('#leaveBody');
       if (!items || items.length === 0) {
-      const cols = (['admin','hr'].includes(String(CURRENT_USER_TYPE).toLowerCase()) ? 11 : 10);
+      const cols = (['admin','hr','supervisor'].includes(String(CURRENT_USER_TYPE).toLowerCase()) ? 11 : 10);
       $body.html(`<tr><td colspan="${cols}" class="text-center text-muted py-4">No leave requests found</td></tr>`);
       return;
     }
@@ -655,7 +655,7 @@ ob_start();
               ${request.comments || ''}
             </span>
           </td>
-          ${(['admin','hr'].includes(String(CURRENT_USER_TYPE).toLowerCase()) ? `
+          ${(['admin','hr','supervisor'].includes(String(CURRENT_USER_TYPE).toLowerCase()) ? `
           <td class="text-center">
             <div class="dropdown">
               <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
