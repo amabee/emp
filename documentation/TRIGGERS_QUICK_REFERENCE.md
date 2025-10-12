@@ -6,12 +6,6 @@
 # 1. Set up database permissions (production)
 mysql -u root -p < setup_grants.sql
 
-# 2. Install triggers
-php create_triggers.php
-
-# 3. Test triggers  
-php final_trigger_test.php
-```
 
 ## 🔐 **Essential Grants (Production)**
 ```sql
