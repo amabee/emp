@@ -156,10 +156,10 @@ class ApplicantController {
                 d.dept_name,
                 CONCAT(e.fname, ' ', e.lname) as interviewer_name
             FROM applicants a
-            LEFT JOIN job_positions p ON a.position_applied = p.position_id
+            LEFT JOIN job_position p ON a.position_applied = p.position_id
             LEFT JOIN branches b ON a.branch_applied = b.branch_id
-            LEFT JOIN departments d ON a.department_applied = d.dept_id
-            LEFT JOIN employees e ON a.interviewer_id = e.emp_id
+            LEFT JOIN department d ON a.department_applied = d.department_id
+            LEFT JOIN employees e ON a.interviewer_id = e.employee_id
             WHERE a.applicant_id = ?";
             
             $stmt = $this->conn->prepare($query);
@@ -242,10 +242,10 @@ class ApplicantController {
                 p.position_name, b.branch_name, d.dept_name,
                 CONCAT(e.fname, ' ', e.lname) as interviewer_name
             FROM applicants a
-            LEFT JOIN job_positions p ON a.position_applied = p.position_id
+            LEFT JOIN job_position p ON a.position_applied = p.position_id
             LEFT JOIN branches b ON a.branch_applied = b.branch_id
-            LEFT JOIN departments d ON a.department_applied = d.dept_id
-            LEFT JOIN employees e ON a.interviewer_id = e.emp_id
+            LEFT JOIN department d ON a.department_applied = d.department_id
+            LEFT JOIN employees e ON a.interviewer_id = e.employee_id
             WHERE a.is_active = TRUE";
             
             $params = [];
@@ -341,7 +341,7 @@ class ApplicantController {
                 l.*,
                 CONCAT(e.fname, ' ', e.lname) as performer_name
             FROM applicant_activity_log l
-            LEFT JOIN employees e ON l.performed_by = e.emp_id
+            LEFT JOIN employees e ON l.performed_by = e.employee_id
             WHERE l.applicant_id = ?
             ORDER BY l.created_at DESC";
             

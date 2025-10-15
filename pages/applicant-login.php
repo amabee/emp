@@ -309,8 +309,8 @@
     <!-- Left Side - Form -->
     <div class="form-side">
       <div class="form-header">
-        <h1>SIGN UP</h1>
-        <p id="systemName">Welcome to Employee Management System.<br>Register as a job applicant to experience.</p>
+        <h1>APPLY NOW</h1>
+        <p id="systemName">Welcome to Employee Management System.<br>Submit your application to join our team.</p>
       </div>
 
       <div id="alertContainer"></div>
@@ -337,26 +337,24 @@
         </div>
 
         <div class="form-group">
-          <label for="password">Password <span style="color: red;">*</span></label>
-          <input type="password" id="password" name="password" placeholder="••••••••••••" required minlength="6">
+          <label for="position_applied">Position Applying For</label>
+          <select id="position_applied" name="position_applied" class="form-select">
+            <option value="">Select Position</option>
+          </select>
         </div>
 
         <div class="form-group">
-          <label for="confirm_password">Confirm Password <span style="color: red;">*</span></label>
-          <input type="password" id="confirm_password" name="confirm_password" placeholder="••••••••••••" required minlength="6">
+          <label for="skills">Skills & Experience</label>
+          <input type="text" id="skills" name="skills" placeholder="e.g. PHP, MySQL, 5 years experience">
         </div>
 
         <div class="checkbox-group">
           <input type="checkbox" id="terms" name="terms" required>
-          <label for="terms">I agree to the terms of service</label>
+          <label for="terms">I agree to the terms of service and consent to data processing</label>
         </div>
 
-        <button type="submit" class="btn-submit" id="submitBtn">Create Account</button>
+        <button type="submit" class="btn-submit" id="submitBtn">Submit Application</button>
       </form>
-
-      <div class="signin-link">
-        Already a member? <a href="./applicant-portal.php">Sign in</a>
-      </div>
 
       <div class="back-home">
         <a href="./landing.php">
