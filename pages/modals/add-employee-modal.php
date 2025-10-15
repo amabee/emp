@@ -7,6 +7,24 @@
       </div>
       <div class="modal-body">
         <form id="addEmployeeForm">
+          <!-- Option to Import from Applicant -->
+          <div class="alert alert-info" role="alert">
+            <i class='bx bx-info-circle'></i>
+            <strong>Tip:</strong> You can select an accepted applicant to auto-fill their information.
+          </div>
+          
+          <div class="row mb-3">
+            <div class="col-md-12">
+              <label class="form-label">Import from Applicant (Optional)</label>
+              <select class="form-select" id="applicantSelect" name="applicant_id">
+                <option value="">-- Create New Employee --</option>
+              </select>
+              <small class="text-muted">Select an accepted applicant to import their details</small>
+            </div>
+          </div>
+
+          <hr class="my-3">
+
           <div class="row mb-3">
             <div class="col-md-6">
               <label class="form-label">First Name *</label>

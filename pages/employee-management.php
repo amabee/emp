@@ -331,11 +331,96 @@ function initEmployeeManagement() {
   $(document).ready(function() {
     // Initialize when page loads
     loadEmployees();
+    loadAcceptedApplicants();
 
     $('#departmentFilter, #searchEmployee').on('change keyup', function () {
       refreshEmployees();
     });
+
+    // Handle applicant selection in add employee modal
+    $('#applicantSelect').on('change', function() {
+      const applicantId = $(this).val();
+      if (applicantId) {
+        loadApplicantData(applicantId);
+      } else {
+        // Clear form if no applicant selected
+        clearEmployeeForm();
+      }
+    });
   });
+}
+
+// Load accepted applicants for the dropdown
+function loadAcceptedApplicants() {
+  $.ajax({
+    url: '../ajax/get_accepted_applicants.php',
+    type: 'GET',
+    dataType: 'json',
+    success: function(result) {
+      if (result.success && result.applicants) {
+        const $select = $('#applicantSelect');
+        $select.find('option:not(:first)').remove();
+        
+        result.applicants.forEach(app => {
+          const fullName = `${app.first_name} ${app.middle_name || ''} ${app.last_name}`.trim();
+          const position = app.position_name || 'No position';
+          $select.append(`<option value="${app.applicant_id}">${fullName} - ${position}</option>`);
+        });
+      }
+    },
+    error: function(error) {
+      console.error('Error loading applicants:', error);
+    }
+  });
+}
+
+// Load applicant data and populate form
+function loadApplicantData(applicantId) {
+  $.ajax({
+    url: '../ajax/get_applicant_profile.php',
+    type: 'POST',
+    data: { applicant_id: applicantId },
+    dataType: 'json',
+    success: function(result) {
+      if (result.success && result.applicant) {
+        const app = result.applicant;
+        
+        // Populate form fields
+        $('#addEmployeeForm input[name="first_name"]').val(app.first_name);
+        $('#addEmployeeForm input[name="middle_name"]').val(app.middle_name || '');
+        $('#addEmployeeForm input[name="last_name"]').val(app.last_name);
+        $('#addEmployeeForm input[name="email"]').val(app.email);
+        $('#addEmployeeForm input[name="contact_number"]').val(app.phone);
+        $('#addEmployeeForm input[name="address"]').val(app.address || '');
+        $('#addEmployeeForm input[name="date_of_birth"]').val(app.date_of_birth || '');
+        
+        // Set gender
+        if (app.gender) {
+          $('#addEmployeeForm select[name="gender"]').val(app.gender.toLowerCase());
+        }
+        
+        // Set position, branch, department if available
+        if (app.position_applied) {
+          $('#addEmployeeForm select[name="position_id"]').val(app.position_applied);
+        }
+        if (app.branch_applied) {
+          $('#addEmployeeForm select[name="branch_id"]').val(app.branch_applied);
+        }
+        if (app.department_applied) {
+          $('#addEmployeeForm select[name="department_id"]').val(app.department_applied);
+        }
+      }
+    },
+    error: function(error) {
+      console.error('Error loading applicant data:', error);
+      Swal.fire('Error', 'Failed to load applicant data', 'error');
+    }
+  });
+}
+
+// Clear employee form
+function clearEmployeeForm() {
+  $('#addEmployeeForm')[0].reset();
 }
 
 // === PAGINATION FUNCTIONS ===

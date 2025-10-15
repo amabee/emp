@@ -310,36 +310,52 @@
     <div class="form-side">
       <div class="form-header">
         <h1>SIGN UP</h1>
-        <p>Welcome to the Smart Site System for Oil Depot.<br>Register as a member to experience.</p>
+        <p id="systemName">Welcome to Employee Management System.<br>Register as a job applicant to experience.</p>
       </div>
 
-      <div class="alert alert-info">
-        <i class='bx bx-info-circle'></i> 
-        <strong>Coming Soon!</strong> The applicant registration portal is currently under development.
-        Please check back later or contact HR for assistance.
-      </div>
+      <div id="alertContainer"></div>
 
-      <form id="signupForm" onsubmit="return false;">
+      <form id="signupForm">
         <div class="form-group">
-          <label for="email">E-mail</label>
-          <input type="email" id="email" name="email" placeholder="yourname4051@gmail.com" disabled>
+          <label for="first_name">First Name <span style="color: red;">*</span></label>
+          <input type="text" id="first_name" name="first_name" placeholder="Juan" required>
         </div>
 
         <div class="form-group">
-          <label for="password">Password</label>
-          <input type="password" id="password" name="password" placeholder="••••••••••••" disabled>
+          <label for="last_name">Last Name <span style="color: red;">*</span></label>
+          <input type="text" id="last_name" name="last_name" placeholder="Dela Cruz" required>
+        </div>
+
+        <div class="form-group">
+          <label for="email">E-mail <span style="color: red;">*</span></label>
+          <input type="email" id="email" name="email" placeholder="yourname@gmail.com" required>
+        </div>
+
+        <div class="form-group">
+          <label for="phone">Phone Number <span style="color: red;">*</span></label>
+          <input type="tel" id="phone" name="phone" placeholder="09171234567" required>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password <span style="color: red;">*</span></label>
+          <input type="password" id="password" name="password" placeholder="••••••••••••" required minlength="6">
+        </div>
+
+        <div class="form-group">
+          <label for="confirm_password">Confirm Password <span style="color: red;">*</span></label>
+          <input type="password" id="confirm_password" name="confirm_password" placeholder="••••••••••••" required minlength="6">
         </div>
 
         <div class="checkbox-group">
-          <input type="checkbox" id="terms" name="terms" disabled>
+          <input type="checkbox" id="terms" name="terms" required>
           <label for="terms">I agree to the terms of service</label>
         </div>
 
-        <button type="submit" class="btn-submit" disabled>Create Account</button>
+        <button type="submit" class="btn-submit" id="submitBtn">Create Account</button>
       </form>
 
       <div class="signin-link">
-        Already a member? <a href="./login.php">Sign in</a>
+        Already a member? <a href="./applicant-portal.php">Sign in</a>
       </div>
 
       <div class="back-home">
@@ -424,6 +440,83 @@
       </div>
     </div>
   </div>
+
+  <script>
+    // Load company name
+    fetch('../ajax/get_public_company_info.php')
+      .then(response => response.json())
+      .then(data => {
+        if (data.success && data.company) {
+          document.getElementById('systemName').innerHTML = 
+            `Welcome to ${data.company.company_name}.<br>Register as a job applicant to experience.`;
+        }
+      })
+      .catch(error => console.error('Error loading company info:', error));
+
+    // Handle registration form submission
+    document.getElementById('signupForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirm_password').value;
+      
+      // Validate password match
+      if (password !== confirmPassword) {
+        showAlert('Passwords do not match!', 'danger');
+        return;
+      }
+      
+      // Disable submit button
+      const submitBtn = document.getElementById('submitBtn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating Account...';
+      
+      try {
+        const formData = new FormData(this);
+        const response = await fetch('../ajax/applicant_register.php', {
+          method: 'POST',
+          body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showAlert('Registration successful! Redirecting to login...', 'success');
+          setTimeout(() => {
+            window.location.href = './applicant-portal.php';
+          }, 2000);
+        } else {
+          showAlert(result.message || 'Registration failed. Please try again.', 'danger');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Create Account';
+        }
+      } catch (error) {
+        console.error('Registration error:', error);
+        showAlert('An error occurred. Please try again later.', 'danger');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create Account';
+      }
+    });
+    
+    function showAlert(message, type) {
+      const alertContainer = document.getElementById('alertContainer');
+      const alertClass = type === 'success' ? 'alert-success' : (type === 'danger' ? 'alert-danger' : 'alert-info');
+      
+      alertContainer.innerHTML = `
+        <div class="alert ${alertClass}">
+          <i class='bx ${type === 'success' ? 'bx-check-circle' : 'bx-error-circle'}'></i> 
+          ${message}
+        </div>
+      `;
+      
+      // Auto-hide after 5 seconds for non-success messages
+      if (type !== 'success') {
+        setTimeout(() => {
+          alertContainer.innerHTML = '';
+        }, 5000);
+      }
+    }
+  </script>
 </body>
 
 </html>
