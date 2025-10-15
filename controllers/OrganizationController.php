@@ -367,6 +367,241 @@ class OrganizationController
       throw new Exception('Failed to get employees: ' . $e->getMessage());
     }
   }
+
+  // BRANCH METHODS
+  public function getAllBranches()
+  {
+    try {
+      $stmt = $this->db->prepare("
+                SELECT 
+                    b.branch_id as id,
+                    b.branch_name as name,
+                    b.branch_code as code,
+                    b.address,
+                    b.contact_number,
+                    b.email,
+                    b.manager_id,
+                    b.is_active,
+                    CONCAT(COALESCE(e.first_name, ''), ' ', COALESCE(e.last_name, '')) as manager_name,
+                    COUNT(emp.employee_id) as employee_count,
+                    b.created_at,
+                    b.updated_at
+                FROM branches b
+                LEFT JOIN employees e ON b.manager_id = e.employee_id
+                LEFT JOIN employees emp ON b.branch_id = emp.branch_id AND emp.employment_status = 1
+                GROUP BY b.branch_id, b.branch_name, b.branch_code, b.address, b.contact_number, 
+                         b.email, b.manager_id, b.is_active, e.first_name, e.last_name, 
+                         b.created_at, b.updated_at
+                ORDER BY b.branch_name
+            ");
+      $stmt->execute();
+      return $stmt->fetchAll();
+
+    } catch (Exception $e) {
+      throw new Exception('Failed to get branches: ' . $e->getMessage());
+    }
+  }
+
+  public function getBranch($id)
+  {
+    try {
+      $stmt = $this->db->prepare("
+                SELECT 
+                    b.branch_id as id,
+                    b.branch_name as name,
+                    b.branch_code as code,
+                    b.address,
+                    b.contact_number,
+                    b.email,
+                    b.manager_id,
+                    b.is_active,
+                    CONCAT(COALESCE(e.first_name, ''), ' ', COALESCE(e.last_name, '')) as manager_name,
+                    COUNT(emp.employee_id) as employee_count
+                FROM branches b
+                LEFT JOIN employees e ON b.manager_id = e.employee_id
+                LEFT JOIN employees emp ON b.branch_id = emp.branch_id AND emp.employment_status = 1
+                WHERE b.branch_id = ?
+                GROUP BY b.branch_id, b.branch_name, b.branch_code, b.address, b.contact_number,
+                         b.email, b.manager_id, b.is_active, e.first_name, e.last_name
+            ");
+      $stmt->execute([$id]);
+      return $stmt->fetch();
+
+    } catch (Exception $e) {
+      throw new Exception('Failed to get branch: ' . $e->getMessage());
+    }
+  }
+
+  public function addBranch($data)
+  {
+    try {
+      $this->db->beginTransaction();
+
+      // Check if branch code already exists
+      if (!empty($data['branch_code'])) {
+        $stmt = $this->db->prepare("SELECT branch_id FROM branches WHERE branch_code = ?");
+        $stmt->execute([$data['branch_code']]);
+        if ($stmt->fetch()) {
+          $this->db->rollback();
+          return [
+            'success' => false,
+            'message' => 'Branch code already exists'
+          ];
+        }
+      }
+
+      $stmt = $this->db->prepare("
+                INSERT INTO branches (branch_name, branch_code, address, contact_number, email, manager_id, is_active, created_by) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+
+      $result = $stmt->execute([
+        $data['branch_name'],
+        $data['branch_code'] ?? null,
+        $data['address'] ?? null,
+        $data['contact_number'] ?? null,
+        $data['email'] ?? null,
+        $data['manager_id'] ?? null,
+        $data['is_active'] ?? 1,
+        $data['created_by'] ?? null
+      ]);
+
+      if ($result) {
+        $branchId = $this->db->lastInsertId();
+        $this->db->commit();
+
+        return [
+          'success' => true,
+          'message' => 'Branch added successfully',
+          'branch_id' => $branchId
+        ];
+      } else {
+        $this->db->rollback();
+        return [
+          'success' => false,
+          'message' => 'Failed to add branch'
+        ];
+      }
+
+    } catch (Exception $e) {
+      $this->db->rollback();
+      return [
+        'success' => false,
+        'message' => 'Error: ' . $e->getMessage()
+      ];
+    }
+  }
+
+  public function updateBranch($id, $data)
+  {
+    try {
+      $this->db->beginTransaction();
+
+      // Check if branch code already exists (excluding current branch)
+      if (!empty($data['branch_code'])) {
+        $stmt = $this->db->prepare("SELECT branch_id FROM branches WHERE branch_code = ? AND branch_id != ?");
+        $stmt->execute([$data['branch_code'], $id]);
+        if ($stmt->fetch()) {
+          $this->db->rollback();
+          return [
+            'success' => false,
+            'message' => 'Branch code already exists'
+          ];
+        }
+      }
+
+      $stmt = $this->db->prepare("
+                UPDATE branches 
+                SET branch_name = ?, 
+                    branch_code = ?, 
+                    address = ?, 
+                    contact_number = ?, 
+                    email = ?, 
+                    manager_id = ?, 
+                    is_active = ?,
+                    updated_by = ?
+                WHERE branch_id = ?
+            ");
+
+      $result = $stmt->execute([
+        $data['branch_name'],
+        $data['branch_code'] ?? null,
+        $data['address'] ?? null,
+        $data['contact_number'] ?? null,
+        $data['email'] ?? null,
+        $data['manager_id'] ?? null,
+        $data['is_active'] ?? 1,
+        $data['updated_by'] ?? null,
+        $id
+      ]);
+
+      if ($result) {
+        $this->db->commit();
+        return [
+          'success' => true,
+          'message' => 'Branch updated successfully'
+        ];
+      } else {
+        $this->db->rollback();
+        return [
+          'success' => false,
+          'message' => 'Failed to update branch'
+        ];
+      }
+
+    } catch (Exception $e) {
+      $this->db->rollback();
+      return [
+        'success' => false,
+        'message' => 'Error: ' . $e->getMessage()
+      ];
+    }
+  }
+
+  public function deleteBranch($id)
+  {
+    try {
+      $this->db->beginTransaction();
+
+      // Check if branch has employees
+      $stmt = $this->db->prepare("SELECT COUNT(*) as count FROM employees WHERE branch_id = ? AND employment_status = 1");
+      $stmt->execute([$id]);
+      $result = $stmt->fetch();
+
+      if ($result['count'] > 0) {
+        $this->db->rollback();
+        return [
+          'success' => false,
+          'message' => 'Cannot delete branch with active employees. Please reassign employees first.'
+        ];
+      }
+
+      // Delete branch
+      $stmt = $this->db->prepare("DELETE FROM branches WHERE branch_id = ?");
+      $result = $stmt->execute([$id]);
+
+      if ($result) {
+        $this->db->commit();
+        return [
+          'success' => true,
+          'message' => 'Branch deleted successfully'
+        ];
+      } else {
+        $this->db->rollback();
+        return [
+          'success' => false,
+          'message' => 'Failed to delete branch'
+        ];
+      }
+
+    } catch (Exception $e) {
+      $this->db->rollback();
+      return [
+        'success' => false,
+        'message' => 'Error: ' . $e->getMessage()
+      ];
+    }
+  }
 }
 ?>
 
