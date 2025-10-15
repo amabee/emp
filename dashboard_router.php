@@ -27,7 +27,7 @@ if (isset($_SESSION['user_id'])) {
   exit();
 }
 
-// If user is not logged in, redirect to login page
-header('Location: login.php');
+// If user is not logged in, redirect to landing page
+header('Location: pages/landing.php');
 exit();
 ?>

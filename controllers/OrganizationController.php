@@ -368,6 +368,51 @@ class OrganizationController
     }
   }
 
+  public function getAvailableBranchManagers($excludeBranchId = null)
+  {
+    try {
+      // Get employees who are NOT already branch managers (except for the current branch being edited)
+      $sql = "
+                SELECT 
+                    e.employee_id as id,
+                    CONCAT(e.first_name, ' ', e.last_name) as name,
+                    e.first_name,
+                    e.last_name,
+                    d.department_name,
+                    p.position_name
+                FROM employees e
+                LEFT JOIN department d ON e.department_id = d.department_id
+                LEFT JOIN job_position p ON e.position_id = p.position_id
+                LEFT JOIN users u ON e.user_id = u.user_id
+                WHERE e.employment_status = 1
+                AND u.user_id != 1
+                AND (
+                    e.employee_id NOT IN (
+                        SELECT manager_id 
+                        FROM branches 
+                        WHERE manager_id IS NOT NULL
+                        " . ($excludeBranchId ? "AND branch_id != ?" : "") . "
+                    )
+                    OR e.employee_id IS NULL
+                )
+                ORDER BY e.first_name, e.last_name
+            ";
+      
+      $stmt = $this->db->prepare($sql);
+      
+      if ($excludeBranchId) {
+        $stmt->execute([$excludeBranchId]);
+      } else {
+        $stmt->execute();
+      }
+      
+      return $stmt->fetchAll();
+
+    } catch (Exception $e) {
+      throw new Exception('Failed to get available branch managers: ' . $e->getMessage());
+    }
+  }
+
   // BRANCH METHODS
   public function getAllBranches()
   {

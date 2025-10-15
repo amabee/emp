@@ -11,15 +11,22 @@ const branchesPerPage = 10;
 // Load branches on page load
 document.addEventListener('DOMContentLoaded', function() {
     loadBranches();
-    loadEmployeesForBranchManager();
     
     // Set up form handlers
     setupBranchForms();
+    
+    // Load available managers when add modal is opened
+    const addModal = document.getElementById('addBranchModal');
+    if (addModal) {
+        addModal.addEventListener('show.bs.modal', function() {
+            loadEmployeesForBranchManager('add_branch_manager');
+        });
+    }
 });
 
 // Load all branches
 function loadBranches() {
-    fetch('./ajax/get_branches.php')
+    fetch('../ajax/get_branches.php')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -145,24 +152,25 @@ function changeBranchPage(page) {
 }
 
 // Load employees for branch manager dropdown
-function loadEmployeesForBranchManager() {
-    fetch('./ajax/get_employees.php')
+function loadEmployeesForBranchManager(selectElementId = 'add_branch_manager', excludeBranchId = null) {
+    const url = excludeBranchId 
+        ? `../ajax/get_available_branch_managers.php?exclude_branch_id=${excludeBranchId}`
+        : '../ajax/get_available_branch_managers.php';
+    
+    fetch(url)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                const addSelect = document.getElementById('add_branch_manager');
-                const editSelect = document.getElementById('edit_branch_manager');
+                const select = document.getElementById(selectElementId);
+                if (!select) return;
                 
-                const options = data.data.map(emp => 
-                    `<option value="${emp.id}">${escapeHtml(emp.first_name)} ${escapeHtml(emp.last_name)}</option>`
-                ).join('');
+                const options = data.data.map(emp => {
+                    const dept = emp.department_name ? ` - ${emp.department_name}` : '';
+                    const position = emp.position_name ? ` (${emp.position_name})` : '';
+                    return `<option value="${emp.id}">${escapeHtml(emp.name)}${dept}${position}</option>`;
+                }).join('');
                 
-                if (addSelect) {
-                    addSelect.innerHTML = '<option value="">Select Manager</option>' + options;
-                }
-                if (editSelect) {
-                    editSelect.innerHTML = '<option value="">Select Manager</option>' + options;
-                }
+                select.innerHTML = '<option value="">Select Manager</option>' + options;
             }
         })
         .catch(error => console.error('Error loading employees:', error));
@@ -177,7 +185,7 @@ function setupBranchForms() {
             e.preventDefault();
             const formData = new FormData(this);
             
-            fetch('./ajax/add_branch.php', {
+            fetch('../ajax/add_branch.php', {
                 method: 'POST',
                 body: formData
             })
@@ -185,7 +193,11 @@ function setupBranchForms() {
             .then(data => {
                 if (data.success) {
                     showToast('Success', data.message, 'success');
-                    bootstrap.Modal.getInstance(document.getElementById('addBranchModal')).hide();
+                    const modalElement = document.getElementById('addBranchModal');
+                    const modal = bootstrap.Modal.getInstance(modalElement);
+                    if (modal) {
+                        modal.hide();
+                    }
                     addForm.reset();
                     loadBranches();
                 } else {
@@ -206,7 +218,7 @@ function setupBranchForms() {
             e.preventDefault();
             const formData = new FormData(this);
             
-            fetch('./ajax/update_branch.php', {
+            fetch('../ajax/update_branch.php', {
                 method: 'POST',
                 body: formData
             })
@@ -214,7 +226,11 @@ function setupBranchForms() {
             .then(data => {
                 if (data.success) {
                     showToast('Success', data.message, 'success');
-                    bootstrap.Modal.getInstance(document.getElementById('editBranchModal')).hide();
+                    const modalElement = document.getElementById('editBranchModal');
+                    const modal = bootstrap.Modal.getInstance(modalElement);
+                    if (modal) {
+                        modal.hide();
+                    }
                     loadBranches();
                 } else {
                     showToast('Error', data.message, 'error');
@@ -243,8 +259,15 @@ function editBranch(id) {
     document.getElementById('edit_branch_address').value = branch.address || '';
     document.getElementById('edit_branch_contact').value = branch.contact_number || '';
     document.getElementById('edit_branch_email').value = branch.email || '';
-    document.getElementById('edit_branch_manager').value = branch.manager_id || '';
     document.getElementById('edit_branch_status').value = branch.is_active || 1;
+    
+    // Load available managers (excluding current branch so current manager stays available)
+    loadEmployeesForBranchManager('edit_branch_manager', branch.id);
+    
+    // Set current manager after a brief delay to ensure options are loaded
+    setTimeout(() => {
+        document.getElementById('edit_branch_manager').value = branch.manager_id || '';
+    }, 100);
     
     // Show modal
     const modal = new bootstrap.Modal(document.getElementById('editBranchModal'));
@@ -260,7 +283,7 @@ function deleteBranch(id, name) {
     const formData = new FormData();
     formData.append('branch_id', id);
     
-    fetch('./ajax/delete_branch.php', {
+    fetch('../ajax/delete_branch.php', {
         method: 'POST',
         body: formData
     })
@@ -287,9 +310,29 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Toast notification (if not already defined)
+// Toast notification using SweetAlert2
 function showToast(title, message, type = 'info') {
-    // Check if toast function exists globally
+    if (typeof Swal !== 'undefined') {
+        const iconType = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+        Swal.fire({
+            icon: iconType,
+            title: title,
+            text: message,
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            customClass: { popup: 'swal-zindex-9999' },
+            willOpen: () => {
+              const popup = Swal.getPopup();
+              if (popup) popup.style.zIndex = '9999';
+            },
+        });
+        return;
+    }
+    
+    // Check if custom toast function exists globally
     if (typeof window.showToast === 'function') {
         window.showToast(title, message, type);
         return;

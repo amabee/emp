@@ -40,6 +40,7 @@ try {
         'contact_number' => isset($_POST['contact_number']) ? sanitize($_POST['contact_number']) : null,
     'department_id' => !empty($_POST['department']) ? (int)$_POST['department'] : null,
     'position_id' => !empty($_POST['position']) ? (int)$_POST['position'] : null,
+    'branch_id' => !empty($_POST['branch_id']) ? (int)$_POST['branch_id'] : null,
     'gender' => isset($_POST['gender']) ? sanitize($_POST['gender']) : null,
     'birthdate' => isset($_POST['birthdate']) ? sanitize($_POST['birthdate']) : null,
     'basic_salary' => isset($_POST['basic_salary']) ? trim($_POST['basic_salary']) : null,

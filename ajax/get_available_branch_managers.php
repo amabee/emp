@@ -13,7 +13,7 @@ if (!isset($_SESSION['user_id'])) {
     send_json(['success' => false, 'message' => 'Not authenticated']);
 }
 
-// Check permissions (admin, supervisor, hr can view branches)
+// Check permissions
 $allowedTypes = ['admin', 'supervisor', 'hr'];
 if (!in_array($_SESSION['user_type'], $allowedTypes)) {
     send_json(['success' => false, 'message' => 'Access denied']);
@@ -21,8 +21,12 @@ if (!in_array($_SESSION['user_type'], $allowedTypes)) {
 
 try {
     $controller = new OrganizationController();
-    $branches = $controller->getAllBranches();
-    send_json(['success' => true, 'branches' => $branches]);
+    
+    // Get optional branch_id parameter to exclude current branch's manager
+    $excludeBranchId = isset($_GET['exclude_branch_id']) ? intval($_GET['exclude_branch_id']) : null;
+    
+    $employees = $controller->getAvailableBranchManagers($excludeBranchId);
+    send_json(['success' => true, 'data' => $employees]);
 
 } catch (Exception $e) {
     send_json(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);

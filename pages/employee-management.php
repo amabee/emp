@@ -85,6 +85,7 @@ ob_start();
                 <th>Employee</th>
                 <th>Department</th>
                 <th>Position</th>
+                <th>Branch</th>
                 <th>Status</th>
                 <th class="text-center">Actions</th>
               </tr>
@@ -173,6 +174,9 @@ function loadEmployees(page = 1) {
                 </td>
                 <td>${emp.department || 'No Department'}</td>
                 <td>${emp.position || 'No Position'}</td>
+                <td>
+                    ${emp.branch && emp.branch !== 'No Branch' ? `<span class="badge bg-label-info"><i class="bx bx-building"></i> ${emp.branch}</span>` : '<span class="text-muted">No Branch</span>'}
+                </td>
                 <td>
                     <span class="badge bg-label-${emp.status === 'Active' ? 'success' : 'secondary'}">
                         ${emp.status}

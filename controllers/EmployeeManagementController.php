@@ -48,15 +48,16 @@ class EmployeeManagementController
 
             // Insert into employees table (include gender, birthdate, image if provided)
             $stmt = $this->db->prepare("
-                INSERT INTO employees (user_id, department_id, position_id, first_name, middle_name, last_name, 
+                INSERT INTO employees (user_id, department_id, position_id, branch_id, first_name, middle_name, last_name, 
                                      contact_number, email, gender, birthdate, basic_salary, image, employment_status, date_hired) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, CURDATE())
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, CURDATE())
             ");
             
             $stmt->execute([
                 $userId,
                 $data['department_id'] ?? null,
                 $data['position_id'] ?? null,
+                $data['branch_id'] ?? null,
                 $data['first_name'],
                 $data['middle_name'] ?? null,
                 $data['last_name'],
@@ -118,6 +119,9 @@ class EmployeeManagementController
                     COALESCE(jp.position_name, 'No Position') as position,
                     CASE WHEN e.employment_status = 1 THEN 'Active' ELSE 'Inactive' END as status,
                     COALESCE(d.department_name, 'No Department') as department,
+                    COALESCE(b.branch_name, 'No Branch') as branch,
+                    b.branch_code,
+                    e.branch_id,
                     e.date_hired as created_at,
                     e.user_id,
                     e.image
@@ -125,6 +129,7 @@ class EmployeeManagementController
                 LEFT JOIN users u ON e.user_id = u.user_id
                 LEFT JOIN department d ON e.department_id = d.department_id
                 LEFT JOIN job_position jp ON e.position_id = jp.position_id
+                LEFT JOIN branches b ON e.branch_id = b.branch_id
                 $whereClause
                 ORDER BY e.date_hired DESC, e.employee_id DESC
             ";
@@ -184,6 +189,9 @@ class EmployeeManagementController
                     COALESCE(jp.position_name, 'No Position') as position,
                     CASE WHEN e.employment_status = 1 THEN 'Active' ELSE 'Inactive' END as status,
                     COALESCE(d.department_name, 'No Department') as department,
+                    COALESCE(b.branch_name, 'No Branch') as branch,
+                    b.branch_code,
+                    e.branch_id,
                     e.date_hired as created_at,
                     e.user_id,
                     e.image
@@ -191,6 +199,7 @@ class EmployeeManagementController
                 LEFT JOIN users u ON e.user_id = u.user_id
                 LEFT JOIN department d ON e.department_id = d.department_id
                 LEFT JOIN job_position jp ON e.position_id = jp.position_id
+                LEFT JOIN branches b ON e.branch_id = b.branch_id
                 $whereClause
                 ORDER BY e.date_hired DESC, e.employee_id DESC
                 LIMIT {$limit} OFFSET {$off}
@@ -249,12 +258,15 @@ class EmployeeManagementController
                     e.*,
                     d.department_name,
                     jp.position_name,
+                    b.branch_name,
+                    b.branch_code,
                     u.username,
                     u.user_type_id,
                     ut.type_name as user_type_name
                 FROM employees e
                 LEFT JOIN department d ON e.department_id = d.department_id
                 LEFT JOIN job_position jp ON e.position_id = jp.position_id
+                LEFT JOIN branches b ON e.branch_id = b.branch_id
                 LEFT JOIN users u ON e.user_id = u.user_id
                 LEFT JOIN user_type ut ON u.user_type_id = ut.user_type_id
                 WHERE e.employee_id = ?
@@ -293,6 +305,7 @@ class EmployeeManagementController
                 'contact_number = ?',
                 'department_id = ?',
                 'position_id = ?',
+                'branch_id = ?',
                 'employment_status = ?',
                 'gender = ?',
                 'birthdate = ?',
@@ -307,6 +320,7 @@ class EmployeeManagementController
                 $data['contact_number'] ?? null,
                 $data['department_id'] ?? null,
                 $data['position_id'] ?? null,
+                $data['branch_id'] ?? null,
                 $data['employment_status'] ?? 1,
                 $data['gender'] ?? null,
                 !empty($data['birthdate']) ? $data['birthdate'] : null,

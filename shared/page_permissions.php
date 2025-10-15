@@ -4,6 +4,7 @@ return [
   'user-management.php' => ['admin'],
   'system-logs.php' => ['admin'],
   'system-settings.php' => ['admin'],
+  'branches.php' => ['admin'],
   
   // Admin + HR only pages  
   'payroll.php' => ['admin', 'hr'],

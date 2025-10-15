@@ -77,6 +77,19 @@
                         </div>
                     </div>
 
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                <i class="bi bi-building"></i> Branch
+                            </label>
+                            <select class="form-select" name="branch_id" id="edit_branchSelect">
+                                <option value="">Select Branch (Optional)</option>
+                                <!-- Will be populated via JavaScript -->
+                            </select>
+                            <small class="text-muted">Assign employee to a specific branch</small>
+                        </div>
+                    </div>
+
                     <!-- Allowances Section -->
                     <div class="row mb-3">
                         <div class="col-12">
@@ -227,6 +240,9 @@ function loadDepartmentsAndPositionsForEdit() {
             console.error('Failed to load departments and positions for edit:', error);
         }
     });
+
+    // Load branches for edit modal
+    loadBranchesForEdit();
 
     // Load allowances for edit modal
     loadAllowancesForEdit();
@@ -380,6 +396,7 @@ function populateEditModal(employee) {
     setTimeout(function() {
         $('#edit_department').val(employee.department_id || '');
         $('#edit_position').val(employee.position_id || '');
+        $('#edit_branchSelect').val(employee.branch_id || '');
         $('#edit_user_type').val(employee.user_type_id || '');
         $('#edit_employment_status').val(employee.employment_status || '1');
         
@@ -449,6 +466,33 @@ function loadExistingEmployeeAllowancesAndDeductions(employeeId) {
         },
         error: function (xhr, status, error) {
             console.error('Failed to load existing deductions:', error);
+        }
+    });
+}
+
+function loadBranchesForEdit() {
+    $.ajax({
+        url: '../ajax/get_branches.php',
+        type: 'GET',
+        dataType: 'json',
+        success: function (response) {
+            if (response.success && response.branches) {
+                const $branchSelect = $('#edit_branchSelect');
+                $branchSelect.find('option:not(:first)').remove();
+
+                if (response.branches.length > 0) {
+                    response.branches.forEach(branch => {
+                        if (branch.is_active == 1) {
+                            $branchSelect.append(`<option value="${branch.id}">${branch.name} (${branch.code})</option>`);
+                        }
+                    });
+                }
+            } else {
+                console.warn('No branches available');
+            }
+        },
+        error: function (xhr, status, error) {
+            console.error('Failed to load branches:', error);
         }
     });
 }

@@ -77,6 +77,17 @@
             </div>
           </div>
 
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label"><i class="bx bx-store me-1"></i>Branch</label>
+              <select class="form-select" name="branch_id" id="branchSelect">
+                <option value="">No Branch (Unassigned)</option>
+                <!-- Will be populated via JavaScript -->
+              </select>
+              <small class="text-muted">Assign employee to a branch location</small>
+            </div>
+          </div>
+
           <!-- Allowances Section -->
           <div class="row mb-3">
             <div class="col-12">
@@ -233,6 +244,9 @@
         }
       });
 
+      // Load branches
+      loadBranches();
+
       // Load allowances
       loadAllowances();
       
@@ -357,6 +371,34 @@
         error: function (xhr, status, error) {
           console.error('Failed to load deductions:', error);
           $('#deductionsContainer').html('<div class="text-danger">Failed to load deductions</div>');
+        }
+      });
+    }
+
+    function loadBranches(selectedBranchId = null) {
+      $.ajax({
+        url: '../ajax/get_branches.php',
+        type: 'GET',
+        dataType: 'json',
+        success: function (response) {
+          if (response.success && response.branches) {
+            const $branchSelect = $('#branchSelect');
+            $branchSelect.find('option:not(:first)').remove();
+
+            if (response.branches.length > 0) {
+              response.branches.forEach(branch => {
+                if (branch.is_active == 1) {
+                  const selected = selectedBranchId && branch.id == selectedBranchId ? 'selected' : '';
+                  $branchSelect.append(`<option value="${branch.id}" ${selected}>${branch.name} (${branch.code})</option>`);
+                }
+              });
+            }
+          } else {
+            console.warn('No branches available');
+          }
+        },
+        error: function (xhr, status, error) {
+          console.error('Failed to load branches:', error);
         }
       });
     }
