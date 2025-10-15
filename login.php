@@ -63,6 +63,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap"
     rel="stylesheet" />
 
+  <!-- Icons -->
+  <link rel="stylesheet" href="assets/vendor/fonts/boxicons.css" />
+
   <!-- Core CSS -->
   <link rel="stylesheet" href="assets/vendor/css/core.css" class="template-customizer-core-css" />
   <link rel="stylesheet" href="assets/vendor/css/pages/page-auth.css" />
@@ -123,6 +126,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <button class="btn btn-primary d-grid w-100" type="submit">Sign in</button>
               </div>
             </form>
+
+            <div class="divider my-4">
+              <div class="divider-text">or</div>
+            </div>
+
+            <p class="text-center">
+              <a href="./pages/landing.php" class="btn btn-outline-secondary">
+                <i class='bx bx-left-arrow-circle'></i> Back to Home
+              </a>
+            </p>
+
+            <p class="text-center mt-4">
+              <span>Job applicant?</span>
+              <a href="./pages/applicant-login.php">
+                <span>Applicant Portal</span>
+              </a>
+            </p>
 
             <!-- <p class="text-center">
               <span>New here?</span>

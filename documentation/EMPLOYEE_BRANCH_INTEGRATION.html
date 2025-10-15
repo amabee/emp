@@ -1,0 +1,93 @@
+<!-- 
+  BONUS: Branch Selection Component for Employee Forms
+  Add this to your employee add/edit modal forms
+-->
+
+<!-- Branch Selection Field -->
+<div class="col-md-6 mb-3">
+  <label for="employee_branch" class="form-label">
+    <i class="bx bx-store me-1"></i>Branch Assignment
+  </label>
+  <select class="form-select" id="employee_branch" name="branch_id">
+    <option value="">No Branch (Unassigned)</option>
+    <!-- Will be populated via JavaScript -->
+  </select>
+  <small class="text-muted">Assign employee to a branch location</small>
+</div>
+
+<script>
+// Function to load branches into dropdown
+function loadBranchesDropdown(selectElementId = 'employee_branch', selectedBranchId = null) {
+    fetch('./ajax/get_branches.php')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const select = document.getElementById(selectElementId);
+                if (!select) return;
+                
+                // Clear existing options except first one
+                select.innerHTML = '<option value="">No Branch (Unassigned)</option>';
+                
+                // Add branches
+                data.data.forEach(branch => {
+                    if (branch.is_active == 1) { // Only show active branches
+                        const option = document.createElement('option');
+                        option.value = branch.id;
+                        option.textContent = branch.name + (branch.code ? ` (${branch.code})` : '');
+                        
+                        // Pre-select if this is the employee's current branch
+                        if (selectedBranchId && branch.id == selectedBranchId) {
+                            option.selected = true;
+                        }
+                        
+                        select.appendChild(option);
+                    }
+                });
+            }
+        })
+        .catch(error => console.error('Error loading branches:', error));
+}
+
+// Call this when opening add employee modal
+// Example: when modal is shown
+document.getElementById('addEmployeeModal')?.addEventListener('show.bs.modal', function() {
+    loadBranchesDropdown('employee_branch');
+});
+
+// Call this when opening edit employee modal with pre-selected branch
+// Example:
+function editEmployee(employeeId) {
+    // ... fetch employee data ...
+    // Then:
+    loadBranchesDropdown('edit_employee_branch', employeeData.branch_id);
+}
+</script>
+
+<!-- 
+  IMPLEMENTATION STEPS:
+  
+  1. Add the HTML field above to your employee add/edit modals
+  
+  2. Update your employee add/edit PHP handlers to include branch_id:
+     
+     In ajax/add_employee.php:
+     $data['branch_id'] = !empty($_POST['branch_id']) ? intval($_POST['branch_id']) : null;
+     
+  3. Update your EmployeeController to handle branch_id in INSERT/UPDATE
+  
+  4. In employee list page, you can display branch:
+     
+     SELECT 
+         e.*,
+         b.branch_name,
+         b.branch_code
+     FROM employees e
+     LEFT JOIN branches b ON e.branch_id = b.branch_id
+     
+  5. Add branch filter to employee table (optional):
+     
+     <select id="filterByBranch" class="form-select">
+         <option value="">All Branches</option>
+         <!-- Load from get_branches.php -->
+     </select>
+-->

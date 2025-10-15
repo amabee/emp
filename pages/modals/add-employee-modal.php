@@ -7,6 +7,24 @@
       </div>
       <div class="modal-body">
         <form id="addEmployeeForm">
+          <!-- Option to Import from Applicant -->
+          <div class="alert alert-info" role="alert">
+            <i class='bx bx-info-circle'></i>
+            <strong>Tip:</strong> You can select an accepted applicant to auto-fill their information.
+          </div>
+          
+          <div class="row mb-3">
+            <div class="col-md-12">
+              <label class="form-label">Import from Applicant (Optional)</label>
+              <select class="form-select" id="applicantSelect" name="applicant_id">
+                <option value="">-- Create New Employee --</option>
+              </select>
+              <small class="text-muted">Select an accepted applicant to import their details</small>
+            </div>
+          </div>
+
+          <hr class="my-3">
+
           <div class="row mb-3">
             <div class="col-md-6">
               <label class="form-label">First Name *</label>
@@ -74,6 +92,17 @@
                 <option value="">Select Position</option>
                 <!-- Will be populated via JavaScript -->
               </select>
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label"><i class="bx bx-store me-1"></i>Branch</label>
+              <select class="form-select" name="branch_id" id="branchSelect">
+                <option value="">No Branch (Unassigned)</option>
+                <!-- Will be populated via JavaScript -->
+              </select>
+              <small class="text-muted">Assign employee to a branch location</small>
             </div>
           </div>
 
@@ -233,6 +262,9 @@
         }
       });
 
+      // Load branches
+      loadBranches();
+
       // Load allowances
       loadAllowances();
       
@@ -357,6 +389,34 @@
         error: function (xhr, status, error) {
           console.error('Failed to load deductions:', error);
           $('#deductionsContainer').html('<div class="text-danger">Failed to load deductions</div>');
+        }
+      });
+    }
+
+    function loadBranches(selectedBranchId = null) {
+      $.ajax({
+        url: '../ajax/get_branches.php',
+        type: 'GET',
+        dataType: 'json',
+        success: function (response) {
+          if (response.success && response.branches) {
+            const $branchSelect = $('#branchSelect');
+            $branchSelect.find('option:not(:first)').remove();
+
+            if (response.branches.length > 0) {
+              response.branches.forEach(branch => {
+                if (branch.is_active == 1) {
+                  const selected = selectedBranchId && branch.id == selectedBranchId ? 'selected' : '';
+                  $branchSelect.append(`<option value="${branch.id}" ${selected}>${branch.name} (${branch.code})</option>`);
+                }
+              });
+            }
+          } else {
+            console.warn('No branches available');
+          }
+        },
+        error: function (xhr, status, error) {
+          console.error('Failed to load branches:', error);
         }
       });
     }

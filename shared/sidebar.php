@@ -54,7 +54,8 @@ $page_aliases = [
   'reports' => 'reports',
   'dtr' => 'dtr',
   'performance' => 'performance',
-  'advanced_analytics' => 'advanced_analytics'
+  'advanced_analytics' => 'advanced_analytics',
+  'branches' => 'branches',
 ];
 
 // Check if current page has an alias
@@ -102,7 +103,7 @@ if (isset($page_aliases[$current_page])) {
       <li class="menu-item <?php echo isMenuActive('user-management', $current_page); ?>">
         <a href="./user-management.php" class="menu-link">
           <!-- <i class="menu-icon tf-icons bx bx-cog"></i> -->
-          <i class='menu-icon tf-icons bx  bx-user'  ></i> 
+          <i class='menu-icon tf-icons bx  bx-user'></i>
           <div data-i18n="Users">User Management</div>
         </a>
       </li>
@@ -116,6 +117,12 @@ if (isset($page_aliases[$current_page])) {
         <a href="./system-logs.php" class="menu-link">
           <i class="menu-icon tf-icons bx bx-list-ul"></i>
           <div data-i18n="Logs">System Logs</div>
+        </a>
+      </li>
+      <li class="menu-item <?php echo isMenuActive('branch config', $current_page); ?>">
+        <a href="./branches.php" class="menu-link">
+          <i class="menu-icon tf-icons bx bx-list-ul"></i>
+          <div data-i18n="Logs">Branch Configuration</div>
         </a>
       </li>
     <?php endif; ?>
@@ -187,7 +194,7 @@ if (isset($page_aliases[$current_page])) {
       <li class="menu-header small text-uppercase">
         <span class="menu-header-text">Monitoring & Analytics</span>
       </li>
-      
+
       <li class="menu-item <?php echo isMenuActive('advanced_analytics', $current_page); ?>">
         <a href="./advanced_analytics.php" class="menu-link">
           <i class="menu-icon tf-icons bx bx-trending-up"></i>
@@ -210,16 +217,20 @@ if (isset($page_aliases[$current_page])) {
 
     <!-- Leave Management - All users -->
     <li class="menu-header small text-uppercase">
-      <span class="menu-header-text"><?php echo $user_type === 'employee' ? 'My Requests' : 'Leave Management'; ?></span>
+      <span
+        class="menu-header-text"><?php echo $user_type === 'employee' ? 'My Requests' : 'Leave Management'; ?></span>
     </li>
     <li class="menu-item <?php echo isMenuActive('leaves', $current_page); ?>">
       <a href="./leaves.php" class="menu-link">
         <i class="menu-icon tf-icons bx bx-calendar-x"></i>
         <div data-i18n="Leaves">
-          <?php 
-            if ($user_type === 'employee') echo 'My Leave Requests';
-            elseif ($user_type === 'supervisor') echo 'Leave Approvals';
-            else echo 'Leave Management';
+          <?php
+          if ($user_type === 'employee')
+            echo 'My Leave Requests';
+          elseif ($user_type === 'supervisor')
+            echo 'Leave Approvals';
+          else
+            echo 'Leave Management';
           ?>
         </div>
       </a>
