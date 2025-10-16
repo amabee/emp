@@ -400,15 +400,18 @@ function loadApplicantData(applicantId) {
         }
         
         // Set position, branch, department if available
-        if (app.position_applied) {
-          $('#addEmployeeForm select[name="position_id"]').val(app.position_applied);
-        }
-        if (app.branch_applied) {
-          $('#addEmployeeForm select[name="branch_id"]').val(app.branch_applied);
-        }
-        if (app.department_applied) {
-          $('#addEmployeeForm select[name="department_id"]').val(app.department_applied);
-        }
+        // Use setTimeout to ensure dropdowns are loaded
+        setTimeout(function() {
+          if (app.position_applied) {
+            $('#addEmployeeForm select[name="position_id"]').val(app.position_applied).trigger('change');
+          }
+          if (app.branch_applied) {
+            $('#addEmployeeForm select[name="branch_id"]').val(app.branch_applied).trigger('change');
+          }
+          if (app.department_applied) {
+            $('#addEmployeeForm select[name="department_id"]').val(app.department_applied).trigger('change');
+          }
+        }, 300);
       }
     },
     error: function(error) {
