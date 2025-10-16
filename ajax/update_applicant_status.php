@@ -41,19 +41,12 @@ try {
     $result = $applicantController->updateStatus($applicantId, $newStatus, $performedBy, $notes);
     
     if ($result['success']) {
-        // Get applicant details for email
         $applicant = $applicantController->getProfile($applicantId);
-        
-        // Debug: Log the structure of the response
         error_log("Applicant profile response - Success: " . ($applicant['success'] ? 'true' : 'false'));
-        
         if ($applicant['success'] && !empty($applicant['applicant']['email'])) {
             $applicantData = $applicant['applicant'];
-            
-            // Log applicant email
+
             error_log("✉️ Applicant email: " . $applicantData['email'] . ", New Status: " . $newStatus);
-            
-            // Send email for specific status changes
             $sendEmailStatuses = ['reviewing', 'interview_scheduled', 'interviewed', 'accepted', 'rejected', 'hired'];
             
             if (in_array($newStatus, $sendEmailStatuses)) {
@@ -67,7 +60,6 @@ try {
                     $interviewLocation
                 );
                 
-                // Log email result
                 if ($emailResult['success']) {
                     error_log("✅ Status update email sent successfully to: " . $applicantData['email']);
                     $result['email_sent'] = true;
