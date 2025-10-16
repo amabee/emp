@@ -255,6 +255,35 @@ ob_start();
   </div>
 </div>
 
+<!-- View Documents Modal -->
+<div class="modal fade" id="viewDocumentsModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class='bx bx-file me-2'></i>
+          <span id="documentsApplicantName">Applicant Documents</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="documentsLoader" class="text-center py-4">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="text-muted mt-2">Loading documents...</p>
+        </div>
+        <div id="documentsContent" style="display: none;">
+          <!-- Documents will be loaded here -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
@@ -379,6 +408,9 @@ function updateApplicantsTable(applicants) {
               <div class="dropdown-menu">
                 <a class="dropdown-item" href="javascript:void(0);" onclick="viewApplicant(${app.applicant_id})">
                   <i class="bx bx-show me-1"></i> View Details
+                </a>
+                <a class="dropdown-item" href="javascript:void(0);" onclick="viewDocuments(${app.applicant_id}, '${fullName}')">
+                  <i class="bx bx-file me-1"></i> View Documents
                 </a>
                 <a class="dropdown-item" href="javascript:void(0);" onclick="showUpdateStatus(${app.applicant_id})">
                   <i class="bx bx-edit me-1"></i> Update Status
@@ -559,6 +591,94 @@ function displayApplicantDetails(app) {
   `;
   
   $('#applicantDetails').html(html);
+}
+
+// View applicant documents
+function viewDocuments(applicantId, applicantName) {
+  $('#documentsApplicantName').text(applicantName + ' - Documents');
+  $('#viewDocumentsModal').modal('show');
+  $('#documentsLoader').show();
+  $('#documentsContent').hide();
+  
+  $.ajax({
+    url: '../ajax/get_applicant_documents.php',
+    type: 'GET',
+    data: { applicant_id: applicantId },
+    dataType: 'json',
+    success: function(result) {
+      $('#documentsLoader').hide();
+      
+      if (result.success && result.documents.length > 0) {
+        let html = '<div class="list-group list-group-flush">';
+        
+        result.documents.forEach(doc => {
+          const icon = getDocumentIcon(doc.type);
+          const fileSize = doc.size ? formatFileSize(doc.size) : '';
+          const uploadDate = doc.uploaded_at ? 
+            `<small class="text-muted">Uploaded: ${new Date(doc.uploaded_at).toLocaleDateString()}</small>` : '';
+          
+          html += `
+            <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+              <div class="d-flex align-items-center">
+                <i class='bx ${icon} bx-md me-3 text-primary'></i>
+                <div>
+                  <h6 class="mb-0">${doc.name}</h6>
+                  <small class="text-muted">${fileSize}</small>
+                  ${uploadDate}
+                </div>
+              </div>
+              <div>
+                <a href="${doc.url}" target="_blank" class="btn btn-sm btn-primary">
+                  <i class='bx bx-show'></i> View
+                </a>
+                <a href="${doc.url}" download class="btn btn-sm btn-outline-secondary">
+                  <i class='bx bx-download'></i> Download
+                </a>
+              </div>
+            </div>
+          `;
+        });
+        
+        html += '</div>';
+        $('#documentsContent').html(html).show();
+      } else {
+        $('#documentsContent').html(`
+          <div class="text-center py-4">
+            <i class='bx bx-file-blank bx-lg text-muted mb-2'></i>
+            <p class="text-muted">No documents found</p>
+          </div>
+        `).show();
+      }
+    },
+    error: function() {
+      $('#documentsLoader').hide();
+      $('#documentsContent').html(`
+        <div class="alert alert-danger">
+          <i class='bx bx-error'></i> Error loading documents. Please try again.
+        </div>
+      `).show();
+    }
+  });
+}
+
+// Get document icon based on type
+function getDocumentIcon(type) {
+  const icons = {
+    'resume': 'bxs-file-doc',
+    'cover_letter': 'bxs-file',
+    'certificate': 'bxs-award',
+    'portfolio': 'bxs-image',
+    'default': 'bxs-file'
+  };
+  return icons[type] || icons['default'];
+}
+
+// Format file size
+function formatFileSize(bytes) {
+  if (!bytes) return '';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
 }
 
 // Show update status modal
