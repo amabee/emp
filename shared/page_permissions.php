@@ -11,6 +11,7 @@ return [
   'organization-settings.php' => ['admin', 'hr'],
   'deductions.php' => ['admin', 'hr'],
   'allowances.php' => ['admin', 'hr'],
+  'job-applications.php' => ['admin', 'hr'],
   
   // Admin + HR + Supervisor pages (view-only for supervisor)
   'employee-management.php' => ['admin', 'supervisor', 'hr'],
