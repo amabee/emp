@@ -1,6 +1,5 @@
 <?php
-session_start();
-require_once '../config/database.php';
+require_once '../shared/config.php';
 require_once '../controllers/ApplicantController.php';
 
 header('Content-Type: application/json');
@@ -12,8 +11,12 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 try {
-    $database = new Database();
-    $db = $database->getConnection();
+    $db = getDBConnection();
+    if (!$db) {
+        echo json_encode(['success' => false, 'message' => 'Database connection failed']);
+        exit;
+    }
+    
     $applicantController = new ApplicantController($db);
     
     // Get only accepted applicants who haven't been hired yet

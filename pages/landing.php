@@ -494,7 +494,7 @@
 
       <div class="cards-grid">
         <!-- Employee Portal -->
-        <a href="./login.php" class="portal-card">
+        <a href="../login.php" class="portal-card">
           <div class="card-icon">
             <i class='bx bxs-user-check'></i>
           </div>

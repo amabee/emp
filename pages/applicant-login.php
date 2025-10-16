@@ -4,8 +4,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Applicant Sign Up - Employee Management System</title>
-  <meta name="description" content="Register as a job applicant" />
+  <title>Job Application - Employee Management System</title>
+  <meta name="description" content="Apply for a position" />
 
   <!-- Favicon -->
   <link rel="icon" type="image/x-icon" href="../assets/img/favicon/favicon.ico" />
@@ -29,28 +29,22 @@
 
     body {
       font-family: 'Public Sans', sans-serif;
-      background: #fff;
+      background: #F5F7FA;
       min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
     }
 
     .signup-container {
       display: grid;
-      grid-template-columns: 1fr 1.2fr;
-      max-width: 1200px;
-      width: 100%;
+      grid-template-columns: 1fr 1fr;
       min-height: 100vh;
     }
 
     /* Left Side - Form */
     .form-side {
-      padding: 3rem 4rem;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
+      padding: 2rem 3rem;
       background: #fff;
+      overflow-y: auto;
+      max-height: 100vh;
     }
 
     .form-header {
@@ -58,7 +52,7 @@
     }
 
     .form-header h1 {
-      font-size: 2.5rem;
+      font-size: 2rem;
       font-weight: 700;
       color: #2C3E50;
       margin-bottom: 0.5rem;
@@ -70,43 +64,179 @@
       line-height: 1.6;
     }
 
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #2C3E50;
+      margin: 1.5rem 0 1rem 0;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid #E3F2FD;
+    }
+
     .form-group {
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.2rem;
     }
 
     .form-group label {
       display: block;
-      font-size: 0.9rem;
+      font-size: 0.875rem;
       font-weight: 500;
       color: #2C3E50;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.4rem;
     }
 
-    .form-group input {
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
       width: 100%;
-      padding: 0.85rem 1rem;
+      padding: 0.75rem 1rem;
       border: 1px solid #E0E0E0;
-      border-radius: 8px;
-      font-size: 0.95rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
       transition: all 0.3s ease;
       font-family: 'Public Sans', sans-serif;
     }
 
-    .form-group input:focus {
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
       outline: none;
       border-color: #4A90E2;
       box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
     }
 
-    .form-group input::placeholder {
+    .form-group input::placeholder,
+    .form-group textarea::placeholder {
       color: #B0B0B0;
+    }
+
+    .form-group small {
+      display: block;
+      margin-top: 0.25rem;
+      font-size: 0.8rem;
+      color: #6C757D;
+    }
+
+    .form-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .form-grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1rem;
+    }
+
+    /* File Upload Styling */
+    .file-upload-container {
+      margin-bottom: 1.2rem;
+    }
+
+    .file-upload-box {
+      border: 2px dashed #4A90E2;
+      border-radius: 8px;
+      padding: 1.5rem;
+      text-align: center;
+      background: #F8FBFF;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .file-upload-box:hover {
+      background: #E3F2FD;
+      border-color: #357ABD;
+    }
+
+    .file-upload-box i {
+      font-size: 2rem;
+      color: #4A90E2;
+      margin-bottom: 0.5rem;
+    }
+
+    .file-upload-box p {
+      color: #6C757D;
+      font-size: 0.9rem;
+      margin: 0.5rem 0;
+    }
+
+    .file-upload-box small {
+      color: #999;
+      font-size: 0.8rem;
+    }
+
+    .file-input {
+      display: none;
+    }
+
+    .file-preview {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      background: #F5F7FA;
+      border-radius: 6px;
+      display: none;
+    }
+
+    .file-preview.active {
+      display: block;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem;
+      background: #fff;
+      border: 1px solid #E0E0E0;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+    }
+
+    .file-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .file-info {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .file-info i {
+      color: #4A90E2;
+      font-size: 1.2rem;
+    }
+
+    .file-name {
+      font-size: 0.875rem;
+      color: #2C3E50;
+      font-weight: 500;
+    }
+
+    .file-size {
+      font-size: 0.75rem;
+      color: #999;
+    }
+
+    .remove-file {
+      background: none;
+      border: none;
+      color: #E74C3C;
+      cursor: pointer;
+      font-size: 1.2rem;
+      padding: 0.25rem 0.5rem;
+    }
+
+    .remove-file:hover {
+      color: #C0392B;
     }
 
     .checkbox-group {
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      margin-bottom: 1.5rem;
+      margin: 1.5rem 0;
     }
 
     .checkbox-group input[type="checkbox"] {
@@ -117,7 +247,7 @@
     }
 
     .checkbox-group label {
-      font-size: 0.9rem;
+      font-size: 0.875rem;
       color: #6C757D;
       cursor: pointer;
       margin: 0;
@@ -129,17 +259,18 @@
       background: #4A90E2;
       color: #fff;
       border: none;
-      border-radius: 8px;
+      border-radius: 6px;
       font-size: 1rem;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.3s ease;
+      margin-bottom: 1rem;
     }
 
     .btn-submit:hover {
       background: #357ABD;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
     }
 
     .btn-submit:disabled {
@@ -148,26 +279,9 @@
       transform: none;
     }
 
-    .signin-link {
-      text-align: center;
-      margin-top: 1.5rem;
-      font-size: 0.9rem;
-      color: #6C757D;
-    }
-
-    .signin-link a {
-      color: #4A90E2;
-      text-decoration: none;
-      font-weight: 600;
-    }
-
-    .signin-link a:hover {
-      text-decoration: underline;
-    }
-
     .back-home {
-      margin-top: 1rem;
       text-align: center;
+      margin: 1rem 0;
     }
 
     .back-home a {
@@ -184,78 +298,27 @@
       color: #4A90E2;
     }
 
-    /* Right Side - Illustration */
+    /* Right Side - Illustration (FIXED) */
     .illustration-side {
-      background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 3rem;
-      position: relative;
+      padding: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
       overflow: hidden;
     }
 
-    .illustration-side::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      right: -50%;
+    .illustration-content {
       width: 100%;
       height: 100%;
-      background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%);
-    }
-
-    .illustration-content {
-      position: relative;
-      z-index: 2;
-      text-align: center;
     }
 
     .illustration-content img {
-      max-width: 100%;
-      height: auto;
-      filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.15));
-    }
-
-    /* 3D Isometric Illustration using CSS */
-    .isometric-illustration {
-      width: 450px;
-      height: 450px;
-      position: relative;
-      transform: rotateX(60deg) rotateZ(-45deg);
-      transform-style: preserve-3d;
-    }
-
-    .iso-building {
-      position: absolute;
-      background: #4A90E2;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    }
-
-    .iso-building-1 {
-      width: 120px;
-      height: 180px;
-      bottom: 150px;
-      left: 100px;
-      transform: translateZ(0px);
-    }
-
-    .iso-building-2 {
-      width: 100px;
-      height: 150px;
-      bottom: 120px;
-      left: 250px;
-      background: #64B5F6;
-      transform: translateZ(20px);
-    }
-
-    .iso-building-3 {
-      width: 80px;
-      height: 120px;
-      bottom: 100px;
-      left: 50px;
-      background: #90CAF9;
-      transform: translateZ(-10px);
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .alert {
@@ -294,11 +357,36 @@
       }
 
       .form-side {
-        padding: 2rem;
+        padding: 2rem 1.5rem;
+        max-height: none;
       }
 
       .form-header h1 {
-        font-size: 2rem;
+        font-size: 1.75rem;
+      }
+
+      .form-grid-2,
+      .form-grid-3 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .form-side {
+        padding: 1.5rem 1rem;
+      }
+
+      .form-header h1 {
+        font-size: 1.5rem;
+      }
+
+      .section-title {
+        font-size: 1rem;
+      }
+
+      .btn-submit {
+        padding: 0.875rem;
+        font-size: 0.95rem;
       }
     }
   </style>
@@ -309,16 +397,26 @@
     <!-- Left Side - Form -->
     <div class="form-side">
       <div class="form-header">
-        <h1>SIGN UP</h1>
-        <p id="systemName">Welcome to Employee Management System.<br>Register as a job applicant to experience.</p>
+        <h1>Job Application</h1>
+        <p id="systemName">Submit your application and we'll contact you via email.</p>
       </div>
 
       <div id="alertContainer"></div>
 
-      <form id="signupForm">
-        <div class="form-group">
-          <label for="first_name">First Name <span style="color: red;">*</span></label>
-          <input type="text" id="first_name" name="first_name" placeholder="Juan" required>
+      <form id="signupForm" enctype="multipart/form-data">
+        <!-- Personal Information -->
+        <h3 class="section-title">Personal Information</h3>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="first_name">First Name <span style="color: red;">*</span></label>
+            <input type="text" id="first_name" name="first_name" placeholder="Juan" required>
+          </div>
+
+          <div class="form-group">
+            <label for="middle_name">Middle Name</label>
+            <input type="text" id="middle_name" name="middle_name" placeholder="Santos">
+          </div>
         </div>
 
         <div class="form-group">
@@ -326,37 +424,195 @@
           <input type="text" id="last_name" name="last_name" placeholder="Dela Cruz" required>
         </div>
 
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="date_of_birth">Date of Birth</label>
+            <input type="date" id="date_of_birth" name="date_of_birth">
+          </div>
+
+          <div class="form-group">
+            <label for="gender">Gender</label>
+            <select id="gender" name="gender">
+              <option value="">Select Gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Contact Information -->
+        <h3 class="section-title">Contact Information</h3>
+
         <div class="form-group">
           <label for="email">E-mail <span style="color: red;">*</span></label>
           <input type="email" id="email" name="email" placeholder="yourname@gmail.com" required>
+          <small>We'll send interview invitations to this email</small>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="phone">Phone Number <span style="color: red;">*</span></label>
+            <input type="tel" id="phone" name="phone" placeholder="09171234567" required>
+          </div>
+
+          <div class="form-group">
+            <label for="alternative_phone">Alternative Phone</label>
+            <input type="tel" id="alternative_phone" name="alternative_phone" placeholder="09181234567">
+          </div>
         </div>
 
         <div class="form-group">
-          <label for="phone">Phone Number <span style="color: red;">*</span></label>
-          <input type="tel" id="phone" name="phone" placeholder="09171234567" required>
+          <label for="address">Street Address</label>
+          <input type="text" id="address" name="address" placeholder="123 Main Street, Barangay">
         </div>
 
-        <div class="form-group">
-          <label for="password">Password <span style="color: red;">*</span></label>
-          <input type="password" id="password" name="password" placeholder="••••••••••••" required minlength="6">
+        <div class="form-grid-3">
+          <div class="form-group">
+            <label for="city">City</label>
+            <input type="text" id="city" name="city" placeholder="Manila">
+          </div>
+
+          <div class="form-group">
+            <label for="state">Province/State</label>
+            <input type="text" id="state" name="state" placeholder="Metro Manila">
+          </div>
+
+          <div class="form-group">
+            <label for="zip_code">Zip Code</label>
+            <input type="text" id="zip_code" name="zip_code" placeholder="1000">
+          </div>
         </div>
 
+        <!-- Position Applied -->
+        <h3 class="section-title">Application Details</h3>
+
         <div class="form-group">
-          <label for="confirm_password">Confirm Password <span style="color: red;">*</span></label>
-          <input type="password" id="confirm_password" name="confirm_password" placeholder="••••••••••••" required minlength="6">
+          <label for="position_applied">Position Applied For <span style="color: red;">*</span></label>
+          <select id="position_applied" name="position_applied" required>
+            <option value="">Select Position</option>
+          </select>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="branch_applied">Preferred Branch</label>
+            <select id="branch_applied" name="branch_applied">
+              <option value="">Select Branch</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="department_applied">Department</label>
+            <select id="department_applied" name="department_applied">
+              <option value="">Select Department</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Qualifications -->
+        <h3 class="section-title">Qualifications</h3>
+
+        <div class="form-group">
+          <label for="skills">Skills/Qualifications</label>
+          <textarea id="skills" name="skills"
+            placeholder="e.g., PHP, JavaScript, Project Management, 5 years in software development..."
+            rows="3"></textarea>
+        </div>
+
+        <div class="form-grid-3">
+          <div class="form-group">
+            <label for="experience_years">Years of Experience</label>
+            <input type="number" id="experience_years" name="experience_years" placeholder="5.0" step="0.5" min="0">
+          </div>
+
+          <div class="form-group">
+            <label for="expected_salary">Expected Salary</label>
+            <input type="number" id="expected_salary" name="expected_salary" placeholder="25000" step="1000" min="0">
+          </div>
+
+          <div class="form-group">
+            <label for="available_start_date">Available Start Date</label>
+            <input type="date" id="available_start_date" name="available_start_date">
+          </div>
+        </div>
+
+        <!-- Document Uploads -->
+        <h3 class="section-title">Documents</h3>
+
+        <div class="file-upload-container">
+          <label>Resume/CV <span style="color: red;">*</span></label>
+          <div class="file-upload-box" onclick="document.getElementById('resume').click()">
+            <i class='bx bx-cloud-upload'></i>
+            <p>Click to upload your Resume/CV</p>
+            <small>PDF, DOC, DOCX (Max 5MB)</small>
+          </div>
+          <input type="file" id="resume" name="resume" class="file-input" accept=".pdf,.doc,.docx">
+          <div id="resumePreview" class="file-preview"></div>
+        </div>
+
+        <div class="file-upload-container">
+          <label>Cover Letter (Optional)</label>
+          <div class="file-upload-box" onclick="document.getElementById('coverLetter').click()">
+            <i class='bx bx-file'></i>
+            <p>Click to upload your Cover Letter</p>
+            <small>PDF, DOC, DOCX (Max 5MB)</small>
+          </div>
+          <input type="file" id="coverLetter" name="cover_letter_file" class="file-input" accept=".pdf,.doc,.docx">
+          <div id="coverLetterPreview" class="file-preview"></div>
+        </div>
+
+        <div class="file-upload-container">
+          <label>Additional Documents (Optional)</label>
+          <div class="file-upload-box" onclick="document.getElementById('additionalDocs').click()">
+            <i class='bx bx-folder-plus'></i>
+            <p>Click to upload certificates, portfolio, etc.</p>
+            <small>PDF, DOC, DOCX, JPG, PNG (Max 5MB each, up to 5 files)</small>
+          </div>
+          <input type="file" id="additionalDocs" name="additional_documents[]" class="file-input"
+            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple>
+          <div id="additionalDocsPreview" class="file-preview"></div>
+        </div>
+
+        <!-- Reference Information -->
+        <h3 class="section-title">Reference (Optional)</h3>
+
+        <div class="form-group">
+          <label for="reference_name">Reference Name</label>
+          <input type="text" id="reference_name" name="reference_name" placeholder="John Doe">
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="reference_contact">Reference Contact</label>
+            <input type="text" id="reference_contact" name="reference_contact"
+              placeholder="09171234567 or email@example.com">
+          </div>
+
+          <div class="form-group">
+            <label for="reference_relationship">Relationship</label>
+            <input type="text" id="reference_relationship" name="reference_relationship"
+              placeholder="Former Supervisor, Colleague, etc.">
+          </div>
+        </div>
+
+        <!-- Cover Letter Text (Optional) -->
+        <div class="form-group">
+          <label for="cover_letter">Cover Letter Message (Optional)</label>
+          <textarea id="cover_letter" name="cover_letter"
+            placeholder="Tell us why you're interested in this position and what makes you a great fit..."
+            rows="4"></textarea>
         </div>
 
         <div class="checkbox-group">
           <input type="checkbox" id="terms" name="terms" required>
-          <label for="terms">I agree to the terms of service</label>
+          <label for="terms">I agree that the information provided is accurate</label>
         </div>
 
-        <button type="submit" class="btn-submit" id="submitBtn">Create Account</button>
+        <button type="submit" class="btn-submit" id="submitBtn">
+          <i class='bx bx-send'></i> Submit Application
+        </button>
       </form>
-
-      <div class="signin-link">
-        Already a member? <a href="./applicant-portal.php">Sign in</a>
-      </div>
 
       <div class="back-home">
         <a href="./landing.php">
@@ -365,150 +621,63 @@
       </div>
     </div>
 
-    <!-- Right Side - Illustration -->
+    <!-- Right Side - Illustration (FIXED POSITION) -->
     <div class="illustration-side">
       <div class="illustration-content">
-        <!-- Simple 3D-style illustration using SVG -->
-        <svg width="500" height="500" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
-          <!-- Base/Ground -->
-          <ellipse cx="250" cy="420" rx="180" ry="40" fill="#B3E5FC" opacity="0.3"/>
-          
-          <!-- Building 1 (Back Left) -->
-          <g transform="translate(100, 150)">
-            <!-- Front face -->
-            <polygon points="0,100 80,60 80,200 0,240" fill="#1E88E5"/>
-            <!-- Top face -->
-            <polygon points="0,100 80,60 160,100 80,140" fill="#42A5F5"/>
-            <!-- Right face -->
-            <polygon points="80,60 160,100 160,240 80,200" fill="#1565C0"/>
-            
-            <!-- Windows -->
-            <rect x="15" y="130" width="15" height="20" fill="#90CAF9" opacity="0.7"/>
-            <rect x="15" y="170" width="15" height="20" fill="#90CAF9" opacity="0.7"/>
-            <rect x="45" y="130" width="15" height="20" fill="#90CAF9" opacity="0.7"/>
-            <rect x="45" y="170" width="15" height="20" fill="#90CAF9" opacity="0.7"/>
-          </g>
-          
-          <!-- Building 2 (Front Center) -->
-          <g transform="translate(200, 200)">
-            <!-- Front face -->
-            <polygon points="0,80 70,50 70,180 0,210" fill="#1976D2"/>
-            <!-- Top face -->
-            <polygon points="0,80 70,50 140,80 70,110" fill="#2196F3"/>
-            <!-- Right face -->
-            <polygon points="70,50 140,80 140,210 70,180" fill="#0D47A1"/>
-            
-            <!-- Windows -->
-            <rect x="10" y="110" width="12" height="15" fill="#BBDEFB" opacity="0.8"/>
-            <rect x="10" y="140" width="12" height="15" fill="#BBDEFB" opacity="0.8"/>
-            <rect x="40" y="110" width="12" height="15" fill="#BBDEFB" opacity="0.8"/>
-            <rect x="40" y="140" width="12" height="15" fill="#BBDEFB" opacity="0.8"/>
-          </g>
-          
-          <!-- Building 3 (Right) -->
-          <g transform="translate(320, 180)">
-            <!-- Front face -->
-            <polygon points="0,90 60,65 60,220 0,245" fill="#1E88E5"/>
-            <!-- Top face -->
-            <polygon points="0,90 60,65 120,90 60,115" fill="#42A5F5"/>
-            <!-- Right face -->
-            <polygon points="60,65 120,90 120,245 60,220" fill="#1565C0"/>
-            
-            <!-- Windows -->
-            <rect x="12" y="125" width="10" height="15" fill="#90CAF9" opacity="0.7"/>
-            <rect x="12" y="155" width="10" height="15" fill="#90CAF9" opacity="0.7"/>
-            <rect x="35" y="125" width="10" height="15" fill="#90CAF9" opacity="0.7"/>
-            <rect x="35" y="155" width="10" height="15" fill="#90CAF9" opacity="0.7"/>
-          </g>
-          
-          <!-- Screen/Monitor (Front Left) -->
-          <g transform="translate(50, 280)">
-            <rect x="0" y="0" width="80" height="60" rx="5" fill="#263238"/>
-            <rect x="5" y="5" width="70" height="50" fill="#4FC3F7"/>
-            <line x1="10" y1="15" x2="50" y2="15" stroke="#fff" stroke-width="2" opacity="0.7"/>
-            <line x1="10" y1="25" x2="60" y2="25" stroke="#fff" stroke-width="2" opacity="0.7"/>
-            <line x1="10" y1="35" x2="45" y2="35" stroke="#fff" stroke-width="2" opacity="0.7"/>
-            <rect x="30" y="60" width="20" height="8" fill="#455A64"/>
-            <rect x="20" y="68" width="40" height="3" fill="#455A64"/>
-          </g>
-          
-          <!-- Decorative Elements -->
-          <circle cx="380" cy="120" r="25" fill="#FFD54F" opacity="0.4"/>
-          <circle cx="100" cy="100" r="20" fill="#81C784" opacity="0.3"/>
-          <polygon points="420,350 435,340 450,350 435,360" fill="#FF8A65" opacity="0.3"/>
-        </svg>
+        <img src="../assets/img/backgrounds/pets.jpg" alt="Job Application Illustration">
       </div>
     </div>
   </div>
 
-  <script>
-    // Load company name
-    fetch('../ajax/get_public_company_info.php')
-      .then(response => response.json())
-      .then(data => {
-        if (data.success && data.company) {
-          document.getElementById('systemName').innerHTML = 
-            `Welcome to ${data.company.company_name}.<br>Register as a job applicant to experience.`;
-        }
-      })
-      .catch(error => console.error('Error loading company info:', error));
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.7.1.js" integrity="sha256-eKhayi8LEQwp4NKxN+CfCh+3qOVUtJn3QNZ0TciWLP4="
+    crossorigin="anonymous"></script>
 
-    // Handle registration form submission
-    document.getElementById('signupForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      
-      const password = document.getElementById('password').value;
-      const confirmPassword = document.getElementById('confirm_password').value;
-      
-      // Validate password match
-      if (password !== confirmPassword) {
-        showAlert('Passwords do not match!', 'danger');
+  <script>
+    // Define removeFile globally so it's accessible from onclick
+    function removeFile(inputId, index) {
+      const input = document.getElementById(inputId);
+      const preview = document.getElementById(inputId + 'Preview');
+
+      // For single file inputs
+      if (!input.multiple) {
+        input.value = '';
+        preview.classList.remove('active');
+        preview.innerHTML = '';
         return;
       }
-      
-      // Disable submit button
-      const submitBtn = document.getElementById('submitBtn');
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Creating Account...';
-      
-      try {
-        const formData = new FormData(this);
-        const response = await fetch('../ajax/applicant_register.php', {
-          method: 'POST',
-          body: formData
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-          showAlert('Registration successful! Redirecting to login...', 'success');
-          setTimeout(() => {
-            window.location.href = './applicant-portal.php';
-          }, 2000);
-        } else {
-          showAlert(result.message || 'Registration failed. Please try again.', 'danger');
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Create Account';
+
+      // For multiple file inputs
+      const dt = new DataTransfer();
+      const files = input.files;
+
+      for (let i = 0; i < files.length; i++) {
+        if (i !== index) {
+          dt.items.add(files[i]);
         }
-      } catch (error) {
-        console.error('Registration error:', error);
-        showAlert('An error occurred. Please try again later.', 'danger');
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Create Account';
       }
-    });
-    
+
+      input.files = dt.files;
+
+      // Trigger change event to update preview
+      const event = new Event('change');
+      input.dispatchEvent(event);
+    }
+
     function showAlert(message, type) {
       const alertContainer = document.getElementById('alertContainer');
       const alertClass = type === 'success' ? 'alert-success' : (type === 'danger' ? 'alert-danger' : 'alert-info');
-      
+
       alertContainer.innerHTML = `
         <div class="alert ${alertClass}">
           <i class='bx ${type === 'success' ? 'bx-check-circle' : 'bx-error-circle'}'></i> 
           ${message}
         </div>
       `;
-      
+
+      // Scroll to top to show alert
+      document.querySelector('.form-side').scrollTop = 0;
+
       // Auto-hide after 5 seconds for non-success messages
       if (type !== 'success') {
         setTimeout(() => {
@@ -516,6 +685,207 @@
         }, 5000);
       }
     }
+
+    $(document).ready(function () {
+      // Load company info using AJAX
+      $.ajax({
+        url: '../ajax/get_public_company_info.php',
+        type: 'GET',
+        dataType: 'json',
+        success: function (data) {
+          if (data.success && data.company) {
+            $('#systemName').html(
+              `Submit your application to ${data.company.company_name} and we'll contact you via email.`
+            );
+          }
+        },
+        error: function (xhr, status, error) {
+          console.error('Error loading company info:', error);
+        }
+      });
+
+      // Load positions dropdown (using public endpoint)
+      $.ajax({
+        url: '../ajax/get_public_positions.php',
+        type: 'GET',
+        dataType: 'json',
+        success: function (data) {
+          if (data.success && data.positions) {
+            const positionSelect = $('#position_applied');
+            $.each(data.positions, function (index, position) {
+              positionSelect.append(
+                $('<option></option>')
+                  .val(position.position_id)
+                  .text(position.position_name)
+              );
+            });
+          }
+        },
+        error: function (xhr, status, error) {
+          console.error('Error loading positions:', error);
+        }
+      });
+
+      // Load branches dropdown (using public endpoint)
+      $.ajax({
+        url: '../ajax/get_public_branches.php',
+        type: 'GET',
+        dataType: 'json',
+        success: function (data) {
+          if (data.success && data.branches) {
+            const branchSelect = $('#branch_applied');
+            $.each(data.branches, function (index, branch) {
+              branchSelect.append(
+                $('<option></option>')
+                  .val(branch.branch_id)
+                  .text(branch.branch_name)
+              );
+            });
+          }
+        },
+        error: function (xhr, status, error) {
+          console.error('Error loading branches:', error);
+        }
+      });
+
+      // Load departments dropdown (using public endpoint)
+      $.ajax({
+        url: '../ajax/get_public_departments.php',
+        type: 'GET',
+        dataType: 'json',
+        success: function (data) {
+          if (data.success && data.departments) {
+            const deptSelect = $('#department_applied');
+            $.each(data.departments, function (index, dept) {
+              deptSelect.append(
+                $('<option></option>')
+                  .val(dept.department_id)
+                  .text(dept.department_name)
+              );
+            });
+          }
+        },
+        error: function (xhr, status, error) {
+          console.error('Error loading departments:', error);
+        }
+      });
+
+      // File upload handlers
+      function handleFileSelect(inputId, previewId) {
+        const input = document.getElementById(inputId);
+        const preview = document.getElementById(previewId);
+
+        input.addEventListener('change', function () {
+          const files = this.files;
+          if (files.length === 0) {
+            preview.classList.remove('active');
+            preview.innerHTML = '';
+            return;
+          }
+
+          let html = '';
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const sizeKB = (file.size / 1024).toFixed(2);
+            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            const sizeText = file.size > 1024 * 1024 ? sizeMB + ' MB' : sizeKB + ' KB';
+
+            html += `
+            <div class="file-item" data-index="${i}">
+              <div class="file-info">
+                <i class='bx bx-file'></i>
+                <div>
+                  <div class="file-name">${file.name}</div>
+                  <div class="file-size">${sizeText}</div>
+                </div>
+              </div>
+              <button type="button" class="remove-file" onclick="removeFile('${inputId}', ${i})">
+                <i class='bx bx-x'></i>
+              </button>
+            </div>
+          `;
+          }
+
+          preview.innerHTML = html;
+          preview.classList.add('active');
+        });
+      }
+
+      // Initialize file upload handlers
+      handleFileSelect('resume', 'resumePreview');
+      handleFileSelect('coverLetter', 'coverLetterPreview');
+      handleFileSelect('additionalDocs', 'additionalDocsPreview');
+
+      // Handle registration form submission
+      $('#signupForm').on('submit', function (e) {
+        e.preventDefault();
+
+        // Validate file size
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        const fileInputs = ['resume', 'coverLetter', 'additionalDocs'];
+
+        for (const inputId of fileInputs) {
+          const input = document.getElementById(inputId);
+          if (input.files.length > 0) {
+            for (const file of input.files) {
+              if (file.size > maxSize) {
+                showAlert(`File "${file.name}" exceeds 5MB limit`, 'danger');
+                return;
+              }
+            }
+          }
+        }
+
+        // Check if resume is uploaded
+        const resumeInput = document.getElementById('resume');
+        if (resumeInput.files.length === 0) {
+          showAlert('Please upload your Resume/CV', 'danger');
+          return;
+        }
+
+        // Disable submit button
+        const submitBtn = $('#submitBtn');
+        submitBtn.prop('disabled', true);
+        submitBtn.html('<i class="bx bx-loader bx-spin"></i> Submitting Application...');
+
+        const formData = new FormData(this);
+
+        $.ajax({
+          url: '../ajax/applicant_register.php',
+          type: 'POST',
+          data: formData,
+          processData: false,
+          contentType: false,
+          dataType: 'json',
+          success: function (result) {
+            if (result.success) {
+              showAlert('Application submitted successfully! We will contact you via email.', 'success');
+              // Clear form
+              $('#signupForm')[0].reset();
+              // Clear file previews
+              $('#resumePreview').removeClass('active');
+              $('#coverLetterPreview').removeClass('active');
+              $('#additionalDocsPreview').removeClass('active');
+
+              setTimeout(() => {
+                window.location.href = './landing.php';
+              }, 3000);
+            } else {
+              showAlert(result.message || 'Submission failed. Please try again.', 'danger');
+              submitBtn.prop('disabled', false);
+              submitBtn.html('<i class="bx bx-send"></i> Submit Application');
+            }
+          },
+          error: function (xhr, status, error) {
+            console.error('Submission error:', error);
+            showAlert('An error occurred. Please try again later.', 'danger');
+            submitBtn.prop('disabled', false);
+            submitBtn.html('<i class="bx bx-send"></i> Submit Application');
+          }
+        });
+      });
+
+    }); // End document.ready
   </script>
 </body>
 

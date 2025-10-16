@@ -385,6 +385,9 @@ function loadApplicantData(applicantId) {
       if (result.success && result.applicant) {
         const app = result.applicant;
         
+        // Set the hidden field to track this is from an applicant
+        $('#fromApplicantId').val(applicantId);
+        
         // Populate form fields
         $('#addEmployeeForm input[name="first_name"]').val(app.first_name);
         $('#addEmployeeForm input[name="middle_name"]').val(app.middle_name || '');
@@ -392,7 +395,7 @@ function loadApplicantData(applicantId) {
         $('#addEmployeeForm input[name="email"]').val(app.email);
         $('#addEmployeeForm input[name="contact_number"]').val(app.phone);
         $('#addEmployeeForm input[name="address"]').val(app.address || '');
-        $('#addEmployeeForm input[name="date_of_birth"]').val(app.date_of_birth || '');
+        $('#addEmployeeForm input[name="birthdate"]').val(app.date_of_birth || '');
         
         // Set gender
         if (app.gender) {
@@ -400,15 +403,18 @@ function loadApplicantData(applicantId) {
         }
         
         // Set position, branch, department if available
-        if (app.position_applied) {
-          $('#addEmployeeForm select[name="position_id"]').val(app.position_applied);
-        }
-        if (app.branch_applied) {
-          $('#addEmployeeForm select[name="branch_id"]').val(app.branch_applied);
-        }
-        if (app.department_applied) {
-          $('#addEmployeeForm select[name="department_id"]').val(app.department_applied);
-        }
+        // Use setTimeout to ensure dropdowns are loaded
+        setTimeout(function() {
+          if (app.position_applied) {
+            $('#addEmployeeForm select[name="position"]').val(app.position_applied).trigger('change');
+          }
+          if (app.branch_applied) {
+            $('#addEmployeeForm select[name="branch"]').val(app.branch_applied).trigger('change');
+          }
+          if (app.department_applied) {
+            $('#addEmployeeForm select[name="department"]').val(app.department_applied).trigger('change');
+          }
+        }, 300);
       }
     },
     error: function(error) {
@@ -421,6 +427,7 @@ function loadApplicantData(applicantId) {
 // Clear employee form
 function clearEmployeeForm() {
   $('#addEmployeeForm')[0].reset();
+  $('#fromApplicantId').val(''); // Clear the applicant ID
 }
 
 // === PAGINATION FUNCTIONS ===

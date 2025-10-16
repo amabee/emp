@@ -56,6 +56,7 @@ $page_aliases = [
   'performance' => 'performance',
   'advanced_analytics' => 'advanced_analytics',
   'branches' => 'branches',
+  'job-applications' => 'job-applications',
 ];
 
 // Check if current page has an alias
@@ -131,6 +132,12 @@ if (isset($page_aliases[$current_page])) {
       <!-- Admin + HR Section -->
       <li class="menu-header small text-uppercase">
         <span class="menu-header-text">HR Management</span>
+      </li>
+      <li class="menu-item <?php echo isMenuActive('job-applications', $current_page); ?>">
+        <a href="./job-applications.php" class="menu-link">
+          <i class="menu-icon tf-icons bx bx-group"></i>
+          <div data-i18n="Job-Application">Job Applications</div>
+        </a>
       </li>
       <li class="menu-item <?php echo isMenuActive('employee-management', $current_page); ?>">
         <a href="./employee-management.php" class="menu-link">

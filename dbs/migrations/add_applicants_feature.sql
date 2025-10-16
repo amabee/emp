@@ -58,8 +58,8 @@ CREATE TABLE IF NOT EXISTS applicants (
   -- Foreign keys
   CONSTRAINT fk_applicant_position FOREIGN KEY (position_applied) REFERENCES job_position(position_id) ON DELETE SET NULL,
   CONSTRAINT fk_applicant_branch FOREIGN KEY (branch_applied) REFERENCES branches(branch_id) ON DELETE SET NULL,
-  CONSTRAINT fk_applicant_department FOREIGN KEY (department_applied) REFERENCES department(dept_id) ON DELETE SET NULL,
-  CONSTRAINT fk_applicant_interviewer FOREIGN KEY (interviewer_id) REFERENCES employees(emp_id) ON DELETE SET NULL,
+  CONSTRAINT fk_applicant_department FOREIGN KEY (department_applied) REFERENCES department(department_id) ON DELETE SET NULL,
+  CONSTRAINT fk_applicant_interviewer FOREIGN KEY (interviewer_id) REFERENCES employees(employee_id) ON DELETE SET NULL,
   
   -- Indexes
   INDEX idx_email (email),
@@ -95,15 +95,60 @@ CREATE TABLE IF NOT EXISTS applicant_activity_log (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   
   CONSTRAINT fk_log_applicant FOREIGN KEY (applicant_id) REFERENCES applicants(applicant_id) ON DELETE CASCADE,
-  CONSTRAINT fk_log_performer FOREIGN KEY (performed_by) REFERENCES employees(emp_id) ON DELETE SET NULL,
+  CONSTRAINT fk_log_performer FOREIGN KEY (performed_by) REFERENCES employees(employee_id) ON DELETE SET NULL,
   INDEX idx_applicant_log (applicant_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Add applicant_id column to employees table to link hired applicants
-ALTER TABLE employees ADD COLUMN IF NOT EXISTS applicant_id INT NULL AFTER emp_id;
-ALTER TABLE employees ADD CONSTRAINT fk_employee_applicant 
-  FOREIGN KEY (applicant_id) REFERENCES applicants(applicant_id) ON DELETE SET NULL;
-ALTER TABLE employees ADD INDEX idx_applicant_id (applicant_id);
+SET @dbname = 'emp_management';
+SET @tablename = 'employees';
+SET @columnname = 'applicant_id';
+SET @preparedStatement = (SELECT IF(
+  (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE
+      TABLE_SCHEMA = @dbname
+      AND TABLE_NAME = @tablename
+      AND COLUMN_NAME = @columnname
+  ) > 0,
+  "SELECT 1",
+  CONCAT("ALTER TABLE ", @tablename, " ADD COLUMN ", @columnname, " INT NULL AFTER employee_id")
+));
+PREPARE alterIfNotExists FROM @preparedStatement;
+EXECUTE alterIfNotExists;
+DEALLOCATE PREPARE alterIfNotExists;
+
+-- Add foreign key constraint (with check)
+SET @constraintStatement = (SELECT IF(
+  (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+    WHERE
+      TABLE_SCHEMA = @dbname
+      AND TABLE_NAME = @tablename
+      AND CONSTRAINT_NAME = 'fk_employee_applicant'
+  ) > 0,
+  "SELECT 1",
+  CONCAT("ALTER TABLE ", @tablename, " ADD CONSTRAINT fk_employee_applicant FOREIGN KEY (applicant_id) REFERENCES applicants(applicant_id) ON DELETE SET NULL")
+));
+PREPARE addConstraintIfNotExists FROM @constraintStatement;
+EXECUTE addConstraintIfNotExists;
+DEALLOCATE PREPARE addConstraintIfNotExists;
+
+-- Add index (with check)
+SET @indexStatement = (SELECT IF(
+  (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS
+    WHERE
+      TABLE_SCHEMA = @dbname
+      AND TABLE_NAME = @tablename
+      AND INDEX_NAME = 'idx_applicant_id'
+  ) > 0,
+  "SELECT 1",
+  CONCAT("ALTER TABLE ", @tablename, " ADD INDEX idx_applicant_id (applicant_id)")
+));
+PREPARE addIndexIfNotExists FROM @indexStatement;
+EXECUTE addIndexIfNotExists;
+DEALLOCATE PREPARE addIndexIfNotExists;
 
 -- Insert sample applicant data for testing
 INSERT INTO applicants (
