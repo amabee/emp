@@ -98,6 +98,12 @@ class EmployeeManagementController
             $whereClause = "WHERE e.employment_status = 1 AND (u.user_type_id IS NULL OR u.user_type_id != 1)";
             $params = [];
 
+            // Filter by branch for HR users (Admin can see all)
+            if (!empty($filters['user_branch_id'])) {
+                $whereClause .= " AND e.branch_id = ?";
+                $params[] = $filters['user_branch_id'];
+            }
+
             if (!empty($filters['search'])) {
                 $whereClause .= " AND (CONCAT(e.first_name, ' ', e.last_name) LIKE ? OR e.email LIKE ?)";
                 $searchTerm = '%' . $filters['search'] . '%';
@@ -164,6 +170,12 @@ class EmployeeManagementController
             if (!empty($filters['department'])) {
                 $whereClause .= " AND e.department_id = ?";
                 $params[] = $filters['department'];
+            }
+
+            // Branch filtering for HR users
+            if (!empty($filters['user_branch_id'])) {
+                $whereClause .= " AND e.branch_id = ?";
+                $params[] = $filters['user_branch_id'];
             }
 
             // Count total

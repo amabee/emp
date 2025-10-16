@@ -14,6 +14,12 @@ if (!isLoggedIn()) {
 try {
     $controller = new EmployeeManagementController();
     
+    // Check if HR user has branch restriction
+    $branchFilter = null;
+    if (isHRWithBranchRestriction()) {
+        $branchFilter = $user_branch_id;
+    }
+    
     // Determine if Select2 remote is requested
     $format = $_GET['format'] ?? '';
     if ($format === 'select2') {
@@ -21,7 +27,19 @@ try {
         $page = max(1, intval($_GET['page'] ?? 1));
         $perPage = max(10, intval($_GET['per_page'] ?? 20));
 
-        $res = $controller->getEmployeesPaginated(['search' => $q, 'department' => $_GET['department'] ?? null, 'page' => $page, 'per_page' => $perPage]);
+        $filters = [
+            'search' => $q, 
+            'department' => $_GET['department'] ?? null, 
+            'page' => $page, 
+            'per_page' => $perPage
+        ];
+        
+        // Add branch filter for HR users
+        if ($branchFilter) {
+            $filters['user_branch_id'] = $branchFilter;
+        }
+        
+        $res = $controller->getEmployeesPaginated($filters);
         $results = array_map(function($e) {
             return ['id' => $e['id'], 'text' => $e['name']];
         }, $res['results']);
@@ -35,6 +53,11 @@ try {
         }
         if (!empty($_GET['department'])) {
             $filters['department'] = (int)$_GET['department'];
+        }
+        
+        // Add branch filter for HR users
+        if ($branchFilter) {
+            $filters['user_branch_id'] = $branchFilter;
         }
 
         // Get employees, departments, and positions

@@ -12,11 +12,17 @@ if (!isLoggedIn()) {
 try {
   $controller = new DashboardController();
 
-  // Get all dashboard data
-  $stats = $controller->getDashboardStats();
-  $recentActivity = $controller->getRecentActivity(5);
+  // Check if HR user has branch restriction
+  $branchFilter = null;
+  if (isHRWithBranchRestriction()) {
+    $branchFilter = $user_branch_id;
+  }
+
+  // Get all dashboard data with branch filter
+  $stats = $controller->getDashboardStats($branchFilter);
+  $recentActivity = $controller->getRecentActivity(5, $branchFilter);
   $attendanceData = $controller->getAttendanceData();
-  $departmentStats = $controller->getDepartmentStats();
+  $departmentStats = $controller->getDepartmentStats($branchFilter);
 
   echo json_encode([
     'success' => true,

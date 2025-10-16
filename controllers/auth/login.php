@@ -27,7 +27,7 @@ class Login
     $stmt = $this->db->prepare(
       'SELECT u.user_id as user_id, u.username, u.password, e.first_name as firstname, 
               e.middle_name as middlename, e.last_name as lastname, ut.type_name AS type,
-              e.image as image
+              e.image as image, e.employee_id, e.branch_id
        FROM users u 
        LEFT JOIN employees e ON u.user_id = e.user_id 
        LEFT JOIN user_type ut ON u.user_type_id = ut.user_type_id
@@ -43,6 +43,8 @@ class Login
       $_SESSION['user_type'] = strtolower($user['type']);
       $_SESSION['last_login'] = date('Y-m-d H:i:s');
       $_SESSION['user_image'] = $user['image'] ?: null;
+      $_SESSION['employee_id'] = $user['employee_id'] ?? null;
+      $_SESSION['branch_id'] = $user['branch_id'] ?? null;
 
       $updateStmt = $this->db->prepare('UPDATE users SET last_login = ? WHERE user_id = ?');
       $updateStmt->execute([$_SESSION['last_login'], $user['user_id']]);

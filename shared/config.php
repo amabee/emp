@@ -122,6 +122,8 @@ if (!function_exists('isActivePage')) {
   }
 }
 
+// Include session handler for authentication and authorization functions
+require_once __DIR__ . '/session_handler.php';
 
 ?>
 

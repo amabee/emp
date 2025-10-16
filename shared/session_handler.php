@@ -17,6 +17,9 @@ $user_name = $_SESSION['user_name'] ?? 'John Doe';
 $user_email = $_SESSION['user_email'] ?? '';
 $username = $_SESSION['username'] ?? '';
 $user_image = $_SESSION['user_image'] ?? '../assets/img/avatars/default.png';
+$employee_id = $_SESSION['employee_id'] ?? null;
+$user_branch_id = $_SESSION['branch_id'] ?? null;
+$user_department_id = $_SESSION['department_id'] ?? null;
 
 
 // Simple auth check function that doesn't depend on config.php
@@ -98,6 +101,18 @@ if (!function_exists('isSupervisor')) {
 if (!function_exists('isAdminOrHR')) {
     function isAdminOrHR() {
         return hasRole(['admin', 'hr']);
+    }
+}
+
+if (!function_exists('getUserBranchId')) {
+    function getUserBranchId() {
+        return $_SESSION['branch_id'] ?? null;
+    }
+}
+
+if (!function_exists('isHRWithBranchRestriction')) {
+    function isHRWithBranchRestriction() {
+        return hasRole('hr') && !hasRole('admin');
     }
 }
 ?>
