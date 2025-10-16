@@ -241,6 +241,11 @@ ob_start();
             <input type="datetime-local" class="form-control" id="interviewDate">
           </div>
 
+          <div class="mb-3" id="interviewLocationGroup" style="display: none;">
+            <label class="form-label">Interview Location</label>
+            <input type="text" class="form-control" id="interviewLocation" placeholder="e.g., Main Office - Conference Room A">
+          </div>
+
           <div class="mb-3">
             <label class="form-label">Notes (Optional)</label>
             <textarea class="form-control" id="statusNotes" rows="3" placeholder="Add any notes about this status change..."></textarea>
@@ -315,9 +320,11 @@ $(document).ready(function() {
   $('#newStatus').on('change', function() {
     if ($(this).val() === 'interview_scheduled') {
       $('#interviewDateGroup').show();
+      $('#interviewLocationGroup').show();
       $('#interviewDate').attr('required', true);
     } else {
       $('#interviewDateGroup').hide();
+      $('#interviewLocationGroup').hide();
       $('#interviewDate').attr('required', false);
     }
   });
@@ -696,7 +703,8 @@ function updateApplicantStatus() {
     applicant_id: $('#statusApplicantId').val(),
     status: $('#newStatus').val(),
     notes: $('#statusNotes').val(),
-    interview_date: $('#interviewDate').val()
+    interview_date: $('#interviewDate').val(),
+    interview_location: $('#interviewLocation').val()
   };
 
   $.ajax({
@@ -707,7 +715,7 @@ function updateApplicantStatus() {
     success: function(result) {
       if (result.success) {
         $('#updateStatusModal').modal('hide');
-        Swal.fire('Success!', 'Application status updated', 'success');
+        Swal.fire('Success!', 'Application status updated and notification email sent', 'success');
         refreshApplicants();
       } else {
         Swal.fire('Error!', result.message, 'error');

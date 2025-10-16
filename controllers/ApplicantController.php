@@ -398,7 +398,7 @@ class ApplicantController
   public function convertToEmployee($applicantId, $employeeData, $performedBy)
   {
     try {
-      $this->conn->begin_transaction();
+      $this->conn->beginTransaction();
 
       // Get applicant data
       $applicantQuery = "SELECT * FROM applicants WHERE applicant_id = ?";
@@ -409,6 +409,11 @@ class ApplicantController
       if (!$applicant) {
         throw new Exception("Applicant not found");
       }
+
+      // Generate username and temporary password
+      $username = $this->generateUsername($applicant['first_name'], $applicant['last_name']);
+      $temporaryPassword = $this->generateTemporaryPassword();
+      $hashedPassword = password_hash($temporaryPassword, PASSWORD_DEFAULT);
 
       // Insert into employees table
       $empQuery = "INSERT INTO employees (
@@ -435,6 +440,12 @@ class ApplicantController
 
       $employeeId = $this->conn->lastInsertId();
 
+      // Create user account for employee login
+      $userQuery = "INSERT INTO users (username, password, role, employee_id, email, is_active, created_at) 
+                    VALUES (?, ?, 'employee', ?, ?, 1, NOW())";
+      $stmt = $this->conn->prepare($userQuery);
+      $stmt->execute([$username, $hashedPassword, $employeeId, $applicant['email']]);
+
       // Update applicant status to 'hired'
       $updateQuery = "UPDATE applicants SET status = 'hired' WHERE applicant_id = ?";
       $stmt = $this->conn->prepare($updateQuery);
@@ -447,7 +458,7 @@ class ApplicantController
         $applicant['status'],
         'hired',
         $performedBy,
-        "Converted to employee ID: " . $employeeId
+        "Converted to employee ID: " . $employeeId . ", Username: " . $username
       );
 
       $this->conn->commit();
@@ -455,13 +466,66 @@ class ApplicantController
       return [
         'success' => true,
         'message' => 'Applicant successfully converted to employee',
-        'employee_id' => $employeeId
+        'employee_id' => $employeeId,
+        'username' => $username,
+        'temporary_password' => $temporaryPassword,
+        'employee_data' => [
+          'fname' => $applicant['first_name'],
+          'mname' => $applicant['middle_name'],
+          'lname' => $applicant['last_name'],
+          'email' => $applicant['email']
+        ]
       ];
 
     } catch (Exception $e) {
-      $this->conn->rollback();
+      $this->conn->rollBack();
       error_log("ApplicantController::convertToEmployee error: " . $e->getMessage());
       return ['success' => false, 'message' => 'Error converting applicant to employee: ' . $e->getMessage()];
     }
+  }
+
+  /**
+   * Generate username from name (e.g., jdoe, jdoe2, jdoe3)
+   */
+  private function generateUsername($firstName, $lastName)
+  {
+    // Create base username (first initial + last name)
+    $baseUsername = strtolower(substr($firstName, 0, 1) . $lastName);
+    $baseUsername = preg_replace('/[^a-z0-9]/', '', $baseUsername); // Remove special characters
+    
+    $username = $baseUsername;
+    $counter = 1;
+    
+    // Check if username exists, add number if needed
+    while ($this->usernameExists($username)) {
+      $counter++;
+      $username = $baseUsername . $counter;
+    }
+    
+    return $username;
+  }
+
+  /**
+   * Check if username exists
+   */
+  private function usernameExists($username)
+  {
+    $query = "SELECT COUNT(*) FROM users WHERE username = ?";
+    $stmt = $this->conn->prepare($query);
+    $stmt->execute([$username]);
+    return $stmt->fetchColumn() > 0;
+  }
+
+  /**
+   * Generate temporary password (8-12 characters, alphanumeric)
+   */
+  private function generateTemporaryPassword($length = 10)
+  {
+    $chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    $password = '';
+    for ($i = 0; $i < $length; $i++) {
+      $password .= $chars[random_int(0, strlen($chars) - 1)];
+    }
+    return $password;
   }
 }

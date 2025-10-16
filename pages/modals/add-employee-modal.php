@@ -7,6 +7,9 @@
       </div>
       <div class="modal-body">
         <form id="addEmployeeForm">
+          <!-- Hidden field to track applicant ID for conversion -->
+          <input type="hidden" name="from_applicant_id" id="fromApplicantId" value="">
+          
           <!-- Option to Import from Applicant -->
           <div class="alert alert-info" role="alert">
             <i class='bx bx-info-circle'></i>
@@ -190,14 +193,28 @@
         dataType: 'json',
         success: function (response) {
           if (response.success) {
-            Swal.fire({
-              title: 'Success!',
-              html: `Employee added successfully!<br>
-                           Work schedule has been created for the next 90 days.<br><br>
-                           <strong>Login Credentials:</strong><br>
+            let successMessage = 'Employee added successfully!<br>Work schedule has been created for the next 90 days.<br><br>';
+            
+            // Show credentials if they exist (from applicant conversion or new employee)
+            if (response.username && response.password) {
+              successMessage += `<strong>Login Credentials:</strong><br>
                            Username: <code>${response.username}</code><br>
                            Password: <code>${response.password}</code><br><br>
-                           <small class="text-muted">Please save these credentials and share with the employee.</small>`,
+                           <small class="text-muted">Please save these credentials and share with the employee.</small>`;
+            }
+            
+            // Show email status if converting from applicant
+            if (response.email_sent !== undefined) {
+              if (response.email_sent) {
+                successMessage += '<br><br><small class="text-success"><i class="bx bx-check-circle"></i> Welcome email sent successfully!</small>';
+              } else {
+                successMessage += '<br><br><small class="text-warning"><i class="bx bx-error-circle"></i> Employee created but email could not be sent.</small>';
+              }
+            }
+            
+            Swal.fire({
+              title: 'Success!',
+              html: successMessage,
               icon: 'success',
               confirmButtonText: 'OK'
             });
